@@ -147,6 +147,13 @@ void torquetest();
 void tuningPID();
 void spinTest();
 void testing();
+
+// PID auto tuners (src/pid_autotuner.cpp). Blocking; call from opcontrol() before its
+// loop. B aborts. Results show on brain lines 5-7 and in the PROS terminal.
+// maxPower is the relay output (out of 127); lower it if the mechanism swings too hard.
+void tuneCascadePID(float targetInches = 4, float maxPower = 80);
+void tuneAngularPID(float targetDeg = 90, float maxPower = 60);
+void tuneLateralPID(float targetInches = 24, float maxPower = 60);
 /// Thread-safe brain screen print for lines 5-7 (the screen task draws it).
 /// Use this instead of pros::lcd::print anywhere outside the screen task.
 void screenPrint(int line, const char* fmt, ...);

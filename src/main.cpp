@@ -354,7 +354,10 @@ void linearChassisPID(){
 void opcontrol() {
     // the field kills autonomous() at 15 s, so it never gets to clear this itself
     autonRunning = false;
-
+    tuneCascadePID(5,80);
+    // tuneAngularPID(90,127);
+    // tuneLateralPID(24,127);
+    pros::delay(10000000);
     /*
     // loop forever
     // autonomous();
