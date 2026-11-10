@@ -39,6 +39,8 @@ extern pros::Distance rightSensor;
 extern pros::Distance backBottomSensor;
 extern pros::Distance backTopSensor;
 extern pros::Distance claw_sensor;
+/// The pros::Distance for a sensor name in include/localization/robot_config.hpp, or nullptr.
+pros::Distance* distanceSensorFor(const char* name);
 
 
 // The V5 IMU under-reads turns slightly, and by a different amount each way.
@@ -147,6 +149,14 @@ void torquetest();
 void tuningPID();
 void spinTest();
 void testing();
+/// Distance sensor offset tuner (src/offset_tuner.cpp). Blocks until B. Put the robot's center
+/// square on x = 0 or y = 0; it calculates the offset each sensor needs to read exactly that.
+void offsetTuner();
+/// Distance sensor noise test (src/sensor_noise_test.cpp). Blocks until B. Park the robot facing
+/// walls, press A to measure; shows each sensor's average and spread (sigma) for Tuning.
+void sensorNoiseTest();
+/// True while offsetTuner() or sensorNoiseTest() runs, so the controller pose line stays out of the way.
+extern bool tuningToolActive;
 
 // PID auto tuners (src/pid_autotuner.cpp). Blocking; call from opcontrol() before its
 // loop. B aborts. Results show on brain lines 5-7 and in the PROS terminal.
@@ -175,6 +185,34 @@ void toggleMechDown();
 
 void rotationChassisPID();
 void linearChassisPID();
+
+/// Wall reset from the distance sensors (src/distance_reset.cpp). Uses the current odom pose to
+/// pick which wall each sensor faces, then sets x and/or y from the readings, even if they disagree
+/// with odom. Heading is left alone. Averages `samples` readings (~35 ms each), so it blocks briefly.
+/// Returns true if any axis was corrected.
+/// `heading` (degrees, 0 = +Y, clockwise) sets the heading first, e.g. distanceReset(180) at the
+/// start of opcontrol. Leave it out (NAN) to keep the current heading.
+/// `skipSensor` ignores one sensor for this reset, e.g. distanceReset(NAN, true, true, 5, &leftSensor).
+bool distanceReset(double heading = NAN, bool resetX = true, bool resetY = true, int samples = 5,
+                   const pros::Distance* skipSensor = nullptr);
+/// Starts a task that keeps printing the distance-sensor x/y on brain line 7 (doesn't move odom).
+void startWallEstimatePrinter();
+/// Starts a task that blends the distance sensors into LemLib's odom with a per-axis Kalman gain.
+/// Odom stays the default; the gain grows the farther the robot drives without a wall fix.
+/// Prints the gains and odom sigma on brain line 7, so don't also run startWallEstimatePrinter().
+void startPoseFusion();
+/// Set false to pause the blending (odom uncertainty still grows while paused).
+extern bool poseFusionEnabled;
+
+/// Localization: true = the UKF (src/localization/ukf_task.cpp), false = startPoseFusion() above.
+inline constexpr bool USE_UKF = true;
+/// Starts the UKF task: tracking wheels + IMU + distance sensors -> chassis.setPose() every 10 ms.
+/// A chassis.setPose() from anywhere else (auton start pose, distanceReset()) restarts the filter there.
+/// Prints its uncertainty on brain line 7 and logs to /usd/ukf_log.csv if an SD card is in.
+/// Robot geometry and tuning: include/localization/robot_config.hpp.
+void startUkf();
+/// Set false to pause the UKF; LemLib's odometry runs alone and the UKF picks up from there.
+extern bool ukfEnabled;
 
 void closeClaw(int timeoutMs = 3000);
 void openClaw();
