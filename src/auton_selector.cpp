@@ -44,7 +44,7 @@ static const char* allianceName() { return isRed ? "RED" : "BLUE"; }
 void selectAuton(int index) {
     if (autonLocked) return;
     selectedAuton = std::clamp(index, 0, autonCount - 1);
-    screenPrint(6, "Auton: %s  [%s]", autons[selectedAuton].name, allianceName());
+    screenPrint(SCREEN_AUTON, "Auton: %s  [%s]", autons[selectedAuton].name, allianceName());
 }
 
 void toggleAlliance() {
@@ -111,7 +111,7 @@ void autonSelector() {
 
     autonLocked = true;
     AutonRoute& route = autons[selectedAuton];
-    screenPrint(6, "Auton: %s [%s] (locked)", route.name, allianceName());
+    screenPrint(SCREEN_AUTON, "Auton: %s [%s] (locked)", route.name, allianceName());
 
     // step 2: set the start pose, then wait for the second X to start.
     if (route.run) {

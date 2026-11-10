@@ -159,19 +159,22 @@ pros::Controller controller(pros::E_CONTROLLER_MASTER);
 // The brain screen (LVGL) isn't thread-safe: calling pros::lcd from two tasks
 // at once corrupts it and can crash the brain (DATA ABORT in lv_obj_style.c).
 // So only the screen task in initialize() draws. Everything else calls
-// screenPrint(), which saves the text for the screen task to draw on lines 5-7.
+// screenPrint(), which saves the text for the screen task to draw on lines 3-7.
+// Line map is in robot.h next to SCREEN_AUTON.
+constexpr int FIRST_MESSAGE_LINE = SCREEN_AUTON;
+constexpr int MESSAGE_LINES = 8 - FIRST_MESSAGE_LINE;
 pros::Mutex screenMutex;
-char screenMessages[3][48] = {};
+char screenMessages[MESSAGE_LINES][48] = {};
 
 void screenPrint(int line, const char* fmt, ...) {
-    if (line < 5 || line > 7) return;
+    if (line < FIRST_MESSAGE_LINE || line > 7) return;
     char buf[48];
     va_list args;
     va_start(args, fmt);
     vsnprintf(buf, sizeof(buf), fmt, args);
     va_end(args);
     screenMutex.take();
-    std::strcpy(screenMessages[line - 5], buf);
+    std::strcpy(screenMessages[line - FIRST_MESSAGE_LINE], buf);
     screenMutex.give();
 }
 
@@ -196,6 +199,7 @@ int pressNum = 0;
 bool printingDistances = true;
 bool armNeedsDown = true;
 bool isScoring = false;
+int opticalRefreshRate = 100;
 void initialize() {
     pros::lcd::initialize(); // initialize brain screen
     registerBrainAutonSelector(); // brain left/right buttons pick the auton
@@ -209,6 +213,12 @@ void initialize() {
 
     // So we aren't touching the toggle when match starts
     toggleMechUp();
+
+    //light it up, set up refresh rate, somthing abt gestures
+    toggleSensor.set_led_pwm(100);
+    toggleSensor.set_integration_time(opticalRefreshRate);//prob make lower if it doens't stop fast enough
+    toggleSensor.disable_gesture();
+    startAutoToggle(); // always-on color sort; set autoToggleEnabled = false to drive toggleMotor yourself
 
     pros::Task screenTask([&]() {
         while (true) {
@@ -235,28 +245,41 @@ void initialize() {
             lemlib::Pose pose = chassis.getPose();
             double heading = std::fmod(pose.theta, 360.0);
             if (heading < 0) heading += 360.0;
-            // while disabled on a switch/field, competitionAutonSelector() owns controller line 2
+
+            // ---- controller: line 0 = sort color, line 2 = pose.
+            // The controller drops prints sent less than ~50 ms apart (from ANY task), so send
+            // at most one print per 60 ms and alternate between the two lines.
+            // Skip while someone else owns the controller: the selector (picking, or disabled on
+            // a switch/field where competitionAutonSelector() runs) or a tuning tool.
             bool fieldDisabled = pros::competition::is_connected() && pros::competition::is_disabled();
-            // pose as "x y heading"; the controller drops prints sent less than ~50 ms apart
             static uint32_t lastControllerPrint = 0;
+            static bool poseTurn = false;
             if (!pickingAuton && !fieldDisabled && !tuningToolActive &&
                 pros::millis() - lastControllerPrint >= 60) {
-                controller.print(2, 0, "%5.1f %5.1f %3.0f ", pose.x, pose.y, heading);
+                if (poseTurn) {
+                    controller.print(2, 0, "%5.1f %5.1f %3.0f ", pose.x, pose.y, heading);
+                } else {
+                    controller.print(0, 0, "Sort %-4s %-5s", isRed ? "RED" : "BLUE",
+                                     autoToggleEnabled ? "auto" : "manual");
+                }
+                poseTurn = !poseTurn;
                 lastControllerPrint = pros::millis();
             }
-            pros::lcd::print(0, "X: %f", chassis.getPose().x); // x
-            pros::lcd::print(1, "Y: %f", chassis.getPose().y); // y
-            pros::lcd::print(2, "Theta: %f", heading); // heading
-            pros::lcd::print(3, "Front sensor: %.2f", (double)(frontSensor.get() / 25.4));
-            pros::lcd::print(4, "Cascade (in): %.3f", (double)getCascadeInches());
-            char messages[3][48];
+
+            // ---- brain lines 0-2 (screen task's own)
+            pros::lcd::print(0, "X %7.2f  Y %7.2f  H %6.2f", pose.x, pose.y, heading);
+            pros::lcd::print(1, "Front %.2f in   Cascade %.3f in",
+                             (double)(frontSensor.get() / 25.4), (double)getCascadeInches());
+            pros::lcd::print(2, "Sort %s (%s)  hue %3.0f  prox %3d", isRed ? "RED" : "BLUE",
+                             autoToggleEnabled ? "auto" : "manual", toggleSensor.get_hue(),
+                             (int)toggleSensor.get_proximity());
+
+            // ---- brain lines 3-7 (screenPrint messages)
+            char messages[MESSAGE_LINES][48];
             screenMutex.take();
             std::memcpy(messages, screenMessages, sizeof(messages));
             screenMutex.give();
-            for (int i = 0; i < 3; i++) pros::lcd::print(5 + i, "%s", messages[i]);
-            // pros::lcd::print(4, "asdl %d", count);
-            // count+=2;
-            // delay to save resources
+            for (int i = 0; i < MESSAGE_LINES; i++) pros::lcd::print(FIRST_MESSAGE_LINE + i, "%s", messages[i]);
             pros::delay(40);
             //
         }
@@ -564,21 +587,16 @@ void cascadeManual_ryan() {
     }
 }
 void manualToggle_ryan() {
+    // Hold R1 to run the toggle by hand; the auto toggle task backs off while it's held.
+    static bool manual = false;
     if (controller.get_digital(pros::E_CONTROLLER_DIGITAL_R1)) {
+        manual = true;
+        autoToggleEnabled = false;
         toggleMotor.move(100);
-    }else{
-        pros::Task autoToggle([&]() {
-            if (toggleSensor.get_proximity() > 200) {
-                if(toggleSensor.get_hue() ){
-                
-                }
-                
-            }else{
-                toggleMotor.move(0);
-            }
-            pros::delay(50);
-        });
-       
+    } else if (manual) { // just released: stop and hand control back to the task
+        manual = false;
+        toggleMotor.move(0);
+        autoToggleEnabled = true;
     }
 }
 
@@ -667,4 +685,53 @@ void toggleMechDown(){
 void clampClaw(){//different from close cause close claw uses distance sensor
     clawBool = true;
     clawShut.set_value(clawBool);
+}
+bool autoToggleEnabled = true;
+
+void startAutoToggle() {
+    pros::Task toggleTask([]() {
+        constexpr uint32_t kMaxSpinMs = 5000; // stop if one object keeps it spinning this long (jammed / wrong color stuck)
+        uint32_t spinStart = 0;
+        bool spinning = false;
+        bool gaveUp = false;
+
+        while (pickingAuton) pros::delay(20);
+
+        while (true) {
+            if (controller.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_Y)) {
+                isRed = !isRed; 
+            }
+            if (!autoToggleEnabled) { // don't touch it
+                spinning = false;
+                gaveUp = false;
+                pros::delay(20);
+                continue;
+            }
+
+            bool objectPresent = toggleSensor.get_proximity() > 100;
+            bool shouldSpin = false;
+            if (objectPresent && !gaveUp) {
+                double hue = toggleSensor.get_hue();
+                bool detectsRed = (hue > 340 || hue < 20);
+                bool detectsBlue = (hue < 240 && hue > 200);
+                // bool detectsYellow = (hue > 40 && hue < 70);
+                bool detectsOurs = isRed ? detectsRed : detectsBlue;
+                shouldSpin = !detectsOurs; // spin until our alliance color is in front of the sensor
+            }
+            if (!objectPresent) gaveUp = false; // object left, so the next one gets a fresh timeout
+
+            if (shouldSpin) {
+                if (!spinning) spinStart = pros::millis();
+                spinning = true;
+                if (pros::millis() - spinStart > kMaxSpinMs) {
+                    gaveUp = true;
+                    shouldSpin = false;
+                }
+            }
+            if (!shouldSpin) spinning = false;
+
+            toggleMotor.move(shouldSpin ? 127 : 0);
+            pros::delay(opticalRefreshRate);
+        }
+    });
 }

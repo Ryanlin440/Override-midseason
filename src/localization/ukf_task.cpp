@@ -138,7 +138,7 @@ void startUkf() {
             usedRecently += localizer.report().used;
             if (++loops % 10 == 0) {
                 const double(&P)[3][3] = localizer.filter().covariance();
-                screenPrint(7, "UKF %s s%.1fin %.1fdeg used %d/100ms", ukfEnabled ? "on" : "off",
+                screenPrint(SCREEN_LOCALIZATION, "UKF %s s%.1fin %.1fdeg used %d/100ms", ukfEnabled ? "on" : "off",
                             std::sqrt(P[0][0] + P[1][1]), loc::radToDeg(std::sqrt(P[2][2])), usedRecently);
                 usedRecently = 0;
             }

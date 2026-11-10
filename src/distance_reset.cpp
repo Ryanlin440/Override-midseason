@@ -264,7 +264,7 @@ void startPoseFusion() {
             char kx[8] = "--", ky[8] = "--";
             if (gain[0] >= 0) std::snprintf(kx, sizeof(kx), "%.2f", gain[0]);
             if (gain[1] >= 0) std::snprintf(ky, sizeof(ky), "%.2f", gain[1]);
-            screenPrint(7, "Kx %s Ky %s  sx %.2f sy %.2f%s", kx, ky, std::sqrt(fuseP[0]),
+            screenPrint(SCREEN_LOCALIZATION, "Kx %s Ky %s  sx %.2f sy %.2f%s", kx, ky, std::sqrt(fuseP[0]),
                         std::sqrt(fuseP[1]), turningFast ? " TURN" : "");
         }
     });
@@ -283,7 +283,7 @@ void startWallEstimatePrinter() {
             char xText[12] = "--", yText[12] = "--";
             if (hasX) std::snprintf(xText, sizeof(xText), "%.2f", x);
             if (hasY) std::snprintf(yText, sizeof(yText), "%.2f", y);
-            screenPrint(7, "Wall X: %s  Y: %s", xText, yText);
+            screenPrint(SCREEN_LOCALIZATION, "Wall X: %s  Y: %s", xText, yText);
             pros::delay(50);
         }
     });

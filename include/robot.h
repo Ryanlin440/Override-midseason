@@ -25,6 +25,8 @@
 #include "pros/imu.hpp"
 #include "pros/misc.hpp"
 #include "pros/motor_group.hpp"
+#include "pros/motors.hpp"
+#include "pros/optical.hpp"
 #include "pros/rotation.hpp"
 #include "pros/rtos.hpp"
 
@@ -36,8 +38,6 @@ extern lemlib::Chassis chassis;
 extern pros::Distance frontSensor;
 extern pros::Distance leftSensor;
 extern pros::Distance rightSensor;
-extern pros::Distance backBottomSensor;
-extern pros::Distance backTopSensor;
 extern pros::Distance claw_sensor;
 /// The pros::Distance for a sensor name in include/localization/robot_config.hpp, or nullptr.
 pros::Distance* distanceSensorFor(const char* name);
@@ -107,7 +107,6 @@ extern lemlib::PID cascade_pid;
 //void moveCascadeTo(double target);
 void moveCascadeTo(double target, int timeoutMs = 2000);
 
-
 constexpr float HS_AXLE_DIAMETER = 0.25f; 
 // cascade stages multiply travel; calibrated so brain-screen inches match a ruler (8.5 in real move)
 constexpr float CASCADE_TRAVEL_SCALE = 2.355f;
@@ -118,8 +117,17 @@ float getCascadeInches();
 
 extern pros::adi::DigitalOut clawShut;
 extern bool clawBool;
-extern pros::adi::DigitalOut leftToggle;
-extern pros::adi::DigitalOut rightToggle;
+extern pros::adi::DigitalOut toggles;
+
+// Toggle intake: motor + optical sensor that sorts by alliance color (isRed).
+extern pros::Motor toggleMotor;
+extern pros::Optical toggleSensor;
+/// Starts the always-on toggle task (called from initialize()). While autoToggleEnabled is true it
+/// spins toggleMotor whenever an object is in front of toggleSensor until our alliance color (isRed)
+/// is seen, and gives up on an object after 5 s. Nothing in front = motor off.
+void startAutoToggle();
+/// Set false before driving toggleMotor yourself (driver button, auton), true to hand it back.
+extern bool autoToggleEnabled;
 
 
 // ---------------------------------------------------------------- controller
@@ -135,6 +143,11 @@ extern bool autonRunning;
 /// except on a competition switch/field, where it returns right away.
 void autonSelector();
 extern bool pickingAuton;
+/// Alliance color: true = red, false = blue. Defined in auton_selector.cpp and set by the
+/// selector (brain center button / controller Up). Read it anywhere for color sensor logic.
+extern bool isRed;
+/// Flips isRed (does nothing once the auton is locked in).
+void toggleAlliance();
 /// Brain left/right buttons step through the autons. Call after pros::lcd::initialize().
 void registerBrainAutonSelector();
 /// Controller Left/Right picker for competition_initialize(); runs until PROS ends it.
@@ -164,7 +177,21 @@ extern bool tuningToolActive;
 void tuneCascadePID(float targetInches = 4, float maxPower = 80);
 void tuneAngularPID(float targetDeg = 90, float maxPower = 60);
 void tuneLateralPID(float targetInches = 24, float maxPower = 60);
-/// Thread-safe brain screen print for lines 5-7 (the screen task draws it).
+/// Brain screen layout (8 lines). Only the screen task in initialize() touches pros::lcd;
+/// everyone else calls screenPrint() with one of these lines.
+///   0  pose (x, y, heading)                screen task
+///   1  front sensor + cascade height       screen task
+///   2  color sort: alliance, hue, prox     screen task
+///   3  auton selection                     auton_selector.cpp
+///   4  localization status                 UKF / pose fusion / wall printer
+///   5-7 tools and tuners                   pid_autotuner, offset_tuner, noise test, autons tests
+/// Controller (3 lines, ~15 chars): while picking the auton the selector owns line 2. After that
+/// the screen task shows the sort color on line 0 and the pose on line 2. Tuning tools that set
+/// tuningToolActive get all three lines.
+constexpr int SCREEN_AUTON = 3;
+constexpr int SCREEN_LOCALIZATION = 4;
+constexpr int SCREEN_TOOL = 5; // tools use SCREEN_TOOL, SCREEN_TOOL + 1, SCREEN_TOOL + 2
+/// Thread-safe brain screen print for lines 3-7 (the screen task draws it).
 /// Use this instead of pros::lcd::print anywhere outside the screen task.
 void screenPrint(int line, const char* fmt, ...);
 
