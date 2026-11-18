@@ -593,6 +593,7 @@ void manualToggle_ryan() {
         manual = true;
         autoToggleEnabled = false;
         toggleMotor.move(100);
+        // gaveUp=true;
     } else if (manual) { // just released: stop and hand control back to the task
         manual = false;
         toggleMotor.move(0);
@@ -699,16 +700,16 @@ void startAutoToggle() {
 
         while (true) {
             if (controller.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_Y)) {
-                isRed = !isRed; 
-            }
-            if (!autoToggleEnabled) { // don't touch it
+                isRed = !isRed;
+            }//toggles colors for testing
+            if (!autoToggleEnabled) { // don't touch it - we r manually spinning
                 spinning = false;
                 gaveUp = false;
                 pros::delay(20);
                 continue;
             }
 
-            bool objectPresent = toggleSensor.get_proximity() > 100;
+            bool objectPresent = toggleSensor.get_proximity() > 100;//check this value
             bool shouldSpin = false;
             if (objectPresent && !gaveUp) {
                 double hue = toggleSensor.get_hue();
@@ -716,19 +717,19 @@ void startAutoToggle() {
                 bool detectsBlue = (hue < 240 && hue > 200);
                 // bool detectsYellow = (hue > 40 && hue < 70);
                 bool detectsOurs = isRed ? detectsRed : detectsBlue;
-                shouldSpin = !detectsOurs; // spin until our alliance color is in front of the sensor
+                shouldSpin = !detectsOurs; // stop spinning once we see our color
             }
-            if (!objectPresent) gaveUp = false; // object left, so the next one gets a fresh timeout
+            if (!objectPresent) gaveUp = false; // object left, so we reset
 
-            if (shouldSpin) {
-                if (!spinning) spinStart = pros::millis();
+            if (shouldSpin) {//most of the time spin- just check if timeout here
+                if (!spinning) spinStart = pros::millis();//start the counter
                 spinning = true;
-                if (pros::millis() - spinStart > kMaxSpinMs) {
+                if (pros::millis() - spinStart > kMaxSpinMs) {//took too long, give up, dont start till back away
                     gaveUp = true;
                     shouldSpin = false;
                 }
             }
-            if (!shouldSpin) spinning = false;
+            if (!shouldSpin) spinning = false; //timedout or detecing correct collor
 
             toggleMotor.move(shouldSpin ? 127 : 0);
             pros::delay(opticalRefreshRate);
