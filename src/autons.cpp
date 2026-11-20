@@ -105,7 +105,6 @@ void EastWestAuton() {
     // chassis.setPose(61.5,0,90);
     // TIMING: ms since auton start, on brain line 5 and the terminal. Remove once the start pause is found.
     // distanceReset(90,true,false);
-    toggleMechDown();
     chassis.moveToPoint(58, 0, 400, {.forwards = false});
     chassis.moveToPoint(72, 0, 300);
     chassis.moveToPoint(58, 0, 400, {.forwards = false});
@@ -122,7 +121,6 @@ void NorthSouthAuton() {
 
     // distanceReset(0,false,true);
     // pros::delay(10000);
-    toggleMechDown();
     chassis.moveToPoint(0, 58, 400, {.forwards = false});
     chassis.moveToPoint(0, 72, 300);
     chassis.moveToPoint(0, 58, 400, {.forwards = false});
@@ -238,7 +236,6 @@ void SkillsAuton() {
     //move this back when there is wall - testing without wall
     // chassis.setPose(65,0,90);
     // distanceReset(90,true,false);
-    toggleMechDown();
     chassis.moveToPoint(58, 0, 400, {.forwards = false});
     // pros::delay(1000000);
     chassis.moveToPoint(72, 0, 300);

@@ -16,7 +16,7 @@
 #include <cstdarg>
 #include <cstdio>
 #include <cstring>
-pros::MotorGroup right_motors({11, 12, -13}, pros::MotorGearset::blue); // left motors use 600 RPM cartridges
+pros::MotorGroup right_motors({-11, 12, 13}, pros::MotorGearset::blue); // left motors use 600 RPM cartridges
 pros::MotorGroup left_motors({-20, -19, 18}, pros::MotorGearset::blue); // right motors use 200 RPM cartridges
 // drivetrain settings
 lemlib::Drivetrain drivetrain(&left_motors, // left motor group
@@ -29,8 +29,8 @@ lemlib::Drivetrain drivetrain(&left_motors, // left motor group
 
 // pros::Distance backSensor(20);
 pros::Distance frontSensor(15);
-pros::Distance leftSensor(17);
-pros::Distance rightSensor(8);
+pros::Distance leftSensor(3);
+pros::Distance rightSensor(1);
 
 // Which device goes with each sensor name in include/localization/robot_config.hpp (positions live
 // there). Used by the UKF, distanceReset() and offsetTuner(). Add a line when you add a sensor.
@@ -43,10 +43,10 @@ pros::Distance* distanceSensorFor(const char* name) {
 
 ScaledImu imu(5, 1.0032, 1.0047); // left, right scales from spinTest(); right averages half + full speed runs
 // ScaledImu imu(5, 1.0000, 1.0000); // left, right scales from spinTest(); right averages half + full speed runs
-pros::Rotation vertical_rotation_sensor(-21);
-pros::Rotation horizontal_rotation_sensor(4);
-lemlib::TrackingWheel vertical_tracking_wheel(&vertical_rotation_sensor, lemlib::Omniwheel::NEW_2, -.55);
-lemlib::TrackingWheel horizontal_tracking_wheel(&horizontal_rotation_sensor, lemlib::Omniwheel::NEW_2, -1.5);
+pros::Rotation vertical_rotation_sensor(10);
+pros::Rotation horizontal_rotation_sensor(9);
+lemlib::TrackingWheel vertical_tracking_wheel(&vertical_rotation_sensor, lemlib::Omniwheel::NEW_2, -2.55);
+lemlib::TrackingWheel horizontal_tracking_wheel(&horizontal_rotation_sensor, lemlib::Omniwheel::NEW_2, -4.5);
 
 pros::MotorGroup cascade ({1, -2}, pros::v5::MotorGears::blue);//2 11w
 pros::Rotation cascade_sensor(-3);
@@ -75,15 +75,19 @@ void moveCascadeTo(double targetInches, int timeoutMs) {
         pros::delay(10);
     }
 }
-pros::Motor toggleMotor(4);
-pros::Optical toggleSensor(5);
+pros::Motor toggleMotor(8);
+pros::Optical toggleSensor(7);
 // TODO: placeholder port/gearset -- update to the real toggles port(s)
 bool clawBool = false;
-pros::adi::DigitalOut clawShut(7, clawBool);
+pros::adi::DigitalOut clawShut(2, clawBool);
 // TODO: placeholder ADI ports -- update to the real toggle ports
-pros::adi::DigitalOut toggles(8, false);
+pros::adi::DigitalOut toucher(1, false);
+pros::adi::DigitalOut wedge(3, false);
+bool wedgeBool = false;
+bool toucherBool = false;
 
-pros::Distance claw_sensor(9);
+
+pros::Distance claw_sensor(5);
 // pros::Distance backTopSensor(8);
 
 
@@ -212,13 +216,12 @@ void initialize() {
     clawShut.set_value(true);
 
     // So we aren't touching the toggle when match starts
-    toggleMechUp();
 
     //light it up, set up refresh rate, somthing abt gestures
     toggleSensor.set_led_pwm(100);
     toggleSensor.set_integration_time(opticalRefreshRate);//prob make lower if it doens't stop fast enough
     toggleSensor.disable_gesture();
-    startAutoToggle(); // always-on color sort; set autoToggleEnabled = false to drive toggleMotor yourself
+    // startAutoToggle(); // always-on color sort; set autoToggleEnabled = false to drive toggleMotor yourself
 
     pros::Task screenTask([&]() {
         while (true) {
@@ -301,12 +304,7 @@ void initialize() {
                 pros::delay(20);
                 continue;
             }
-            L1Button();
-
-            L2Button();
-
-            R1Button();
-
+         
             RightArrowButton();
             
 
@@ -400,10 +398,10 @@ void opcontrol() {
     autonRunning = false;
     poseFusionEnabled = false;
     ukfEnabled = true; // UKF keeps running in driver control
-    tuneCascadePID(5,80);
+    // tuneCascadePID(5,80);
     // tuneAngularPID(90,127);
     // tuneLateralPID(24,127);
-    pros::delay(10000000);
+    // pros::delay(10000000);
     /*
     // loop forever
     // autonomous();
@@ -449,128 +447,45 @@ void opcontrol() {
             // moveCascadeTo(0,5000);
         }
 
-        if (!isScoring){
-            double cascadePos = getCascadeInches();
-            
-            if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_B)){
-                cascade.move(127); // Move Up
-            }
-            else if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_R2)){
-                // Only allow reverse if it is above 0
-                if (cascadePos > 0.011) {
-                    cascade.move(-127);
-                } else {
-                    cascade.move(0); // Lock it at the bottom
-                }
-            }
-            else{
-                cascade.move(0); // Brake mode HOLD kicks in here
-            }
+        if(controller.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_B)){
+            wedgeBool = !wedgeBool;
+            wedge.set_value(wedgeBool);
+        }
+        if(controller.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_Y)){
+            toucherBool = !toucherBool;
+            toucher.set_value(toucherBool);
+        }
+
+        if(controller.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_L2)){
+            clawBool = !clawBool;
+            clawShut.set_value(clawBool);
         }
         
-        toggleMech();
+        double cascadePos = getCascadeInches();
+        
+        if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_B)){
+            cascade.move(127); // Move Up
+        }
+        else if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_R2)){
+            // Only allow reverse if it is above 0
+            if (cascadePos > 0.011) {
+                cascade.move(-127);
+            } else {
+                cascade.move(0); // Lock it at the bottom
+            }
+        }
+        else{
+            cascade.move(0); // Brake mode HOLD kicks in here
+        }
+        
+        
         
         // delay to save resources
         pros::delay(25);
     }
 }
 
-void L1Button() {
-    static bool l1WasPressed = false;
-    static bool autoClampedThisPress = false;
 
-    bool l1CurrentlyPressed = controller.get_digital(pros::E_CONTROLLER_DIGITAL_L1);
-
-    // check if need to move arm back down after prime
-    if (l1CurrentlyPressed && !l1WasPressed) {
-        if (pressNum == 1) {
-            // abort the score priming
-            pressNum = 0; 
-            
-            // moveCascadeTo(cascadeRestHeight, 600); 
-            
-            // moveArmTo(downArmDegPinAndCup, 2000, 127.0f); 
-            
-            armNeedsDown = true;
-            
-            autoClampedThisPress = true; 
-        } else {
-            autoClampedThisPress = false; 
-        }
-    }
-    
-    // auto-clamp when held down
-    if (l1CurrentlyPressed) {
-        if (clawBool == false && !autoClampedThisPress) {
-            if (claw_sensor.get_distance() < 50) {
-                autoClampedThisPress = true;
-                isScoring = true;
-                
-                // Lower cascade and arm
-                clampClaw();
-                pros::delay(150);
-                
-                // return to resting height
-                moveCascadeTo(cascadeRestHeight, 600); 
-                armNeedsDown = true; 
-                
-                isScoring = false;
-            }
-        }
-    }
-
-    // Manual clamp/release
-    if (!l1CurrentlyPressed && l1WasPressed) {
-        if (!autoClampedThisPress) {
-            
-            // if it's open then manual clamp
-            if (clawBool == false) {
-                isScoring = true;
-                
-                clampClaw();
-                pros::delay(150); 
-                // return to resting height
-                moveCascadeTo(cascadeRestHeight, 600); 
-                armNeedsDown = true;
-                
-                isScoring = false;
-            } 
-            // If closed then manually drop object (single pin scoring)
-            else {
-                isScoring = true;
-                
-                // open claw
-                clawBool = false;
-                clawShut.set_value(false);
-                
-                isScoring = false;
-            }
-        }
-    }
-
-    l1WasPressed = l1CurrentlyPressed;
-}
-
-void L2Button() {
-    if (clawBool == true && controller.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_L2)) {
-        isScoring = true;
-
-        // lower cascade to 0
-        moveCascadeTo(cascadeRestHeight, 600);
-
-        // open claw for a small interval to release cup
-        clawShut.set_value(false);
-        pros::delay(75);
-        clawShut.set_value(true);
-        pros::delay(150);
-        
-        // return arm to resting height
-        moveCascadeTo(cascadeRestHeight, 600);
-        armNeedsDown = true;
-        
-        isScoring = false;
-    }
-}
 void R2Button_ryan() {
     if (controller.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_R2)) {
         clawBool = !clawBool;
@@ -601,38 +516,7 @@ void manualToggle_ryan() {
     }
 }
 
-void R1Button(){
 
-    // if(controller.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_R1)){//ARM movement
-
-    //     if(pressNum == 0){
-    //         // arm_hold_pid.reset();
-    //         armNeedsDown = false;
-    //         pressNum = 1;
-    //         screenPrint(5, "priming...");
-    //     }else if (pressNum==1){
-    //         isScoring = true;
-    //         screenPrint(5, "scoring...");
-    //         cascade.set_brake_mode(pros::E_MOTOR_BRAKE_HOLD);
-    //         //moveCascadeTo(660);
-    //         cascade.move_velocity(0);
-
-            
-    //         pressNum=0;
-    //         clawShut.set_value(false);
-    //         clawBool=false;
-    //         armNeedsDown = true;
-    //         cascade.set_brake_mode(pros::E_MOTOR_BRAKE_HOLD);
-    //         pros::delay(150);
-
-    //         moveCascadeTo(cascadeRestHeight);
-    //         // wait for the arm so the armNeedsDown hold below doesn't stop it mid-move
-    //         isScoring = false;
-    //     }
-        //if(armNeedsDown) moveArmTo(downArmDegPinAndCup+50);
-    // }
-
-};
 
 void RightArrowButton(){
     if(controller.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_RIGHT)){//ARM movement
@@ -668,21 +552,9 @@ void RightArrowButton(){
     }
 };
 
-void toggleMech(){
-    if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_DOWN)){
-        toggles.set_value(true);
-    }else{
-        toggles.set_value(false);
-    }
-};
 
-void toggleMechUp(){
-    toggles.set_value(true);
-};
 
-void toggleMechDown(){
-    toggles.set_value(false);
-};
+
 void clampClaw(){//different from close cause close claw uses distance sensor
     clawBool = true;
     clawShut.set_value(clawBool);

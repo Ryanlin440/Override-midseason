@@ -117,7 +117,9 @@ float getCascadeInches();
 
 extern pros::adi::DigitalOut clawShut;
 extern bool clawBool;
-extern pros::adi::DigitalOut toggles;
+extern pros::adi::DigitalOut toucher;
+extern pros::adi::DigitalOut wedge;
+
 
 // Toggle intake: motor + optical sensor that sorts by alliance color (isRed).
 extern pros::Motor toggleMotor;
@@ -201,13 +203,9 @@ extern double spinTestRotation;
 extern double spinTestPeakRate;
 
 
-void L1Button();
-void L2Button();
-void R1Button();
+
 void RightArrowButton();
-void toggleMech();
-void toggleMechUp();
-void toggleMechDown();
+
 
 
 void rotationChassisPID();
