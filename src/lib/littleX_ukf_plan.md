@@ -316,7 +316,7 @@ in and out of range, the mid-field dead zone, the IMU on and off.
 
 ### Phase 3: C++ UKF library (host-testable, no PROS)
 
-Files (suggested): `include/localization/ukf.hpp`, `src/localization/ukf.cpp`,
+Files (suggested): `include/localization/ukf.hpp`, `src/lib/localization/ukf.cpp`,
 `include/localization/frames.hpp`, `test/test_ukf_parity.cpp`.
 
 - Pure C++17, no PROS headers, so it compiles and runs on a laptop with g++.

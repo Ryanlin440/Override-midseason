@@ -283,7 +283,7 @@ Files (in `littleX.zip`, intended for a PROS project root):
     **This is the UKF measurement function h(x).**
   - `solveAxis(...)` → Desmos section 3.9 general form.
   - `wallReset(estimate, mounts, readings, field, gate=4)` → averages all accepted readings per axis.
-- `include/localization/wall_reset.hpp`, `src/localization/wall_reset.cpp`: PROS wrapper.
+- `include/localization/wall_reset.hpp`, `src/lib/localization/wall_reset.cpp`: PROS wrapper.
   - Reads `pros::Distance` (mm → in, rejects 9999 / PROS_ERR / low confidence past 200 mm) and
     `pros::Imu::get_heading()` + `headingOffset`.
   - `correct(estimate)` updates only axes with a good reading; `globalFix()` tries four quadrant seeds

@@ -164,16 +164,16 @@ void torquetest();
 void tuningPID();
 void spinTest();
 void testing();
-/// Distance sensor offset tuner (src/offset_tuner.cpp). Blocks until B. Put the robot's center
+/// Distance sensor offset tuner (src/lib/offset_tuner.cpp). Blocks until B. Put the robot's center
 /// square on x = 0 or y = 0; it calculates the offset each sensor needs to read exactly that.
 void offsetTuner();
-/// Distance sensor noise test (src/sensor_noise_test.cpp). Blocks until B. Park the robot facing
+/// Distance sensor noise test (src/lib/sensor_noise_test.cpp). Blocks until B. Park the robot facing
 /// walls, press A to measure; shows each sensor's average and spread (sigma) for Tuning.
 void sensorNoiseTest();
 /// True while offsetTuner() or sensorNoiseTest() runs, so the controller pose line stays out of the way.
 extern bool tuningToolActive;
 
-// PID auto tuners (src/pid_autotuner.cpp). Blocking; call from opcontrol() before its
+// PID auto tuners (src/lib/pid_autotuner.cpp). Blocking; call from opcontrol() before its
 // loop. B aborts. Results show on brain lines 5-7 and in the PROS terminal.
 // maxPower is the relay output (out of 127); lower it if the mechanism swings too hard.
 void tuneCascadePID(float targetInches = 4, float maxPower = 80);
@@ -211,7 +211,7 @@ void manualToggle();
 void rotationChassisPID();
 void linearChassisPID();
 
-/// Wall reset from the distance sensors (src/distance_reset.cpp). Uses the current odom pose to
+/// Wall reset from the distance sensors (src/lib/distance_reset.cpp). Uses the current odom pose to
 /// pick which wall each sensor faces, then sets x and/or y from the readings, even if they disagree
 /// with odom. Heading is left alone. Averages `samples` readings (~35 ms each), so it blocks briefly.
 /// Returns true if any axis was corrected.
@@ -229,7 +229,7 @@ void startPoseFusion();
 /// Set false to pause the blending (odom uncertainty still grows while paused).
 extern bool poseFusionEnabled;
 
-/// Localization: true = the UKF (src/localization/ukf_task.cpp), false = startPoseFusion() above.
+/// Localization: true = the UKF (src/lib/localization/ukf_task.cpp), false = startPoseFusion() above.
 inline constexpr bool USE_UKF = true;
 /// Starts the UKF task: tracking wheels + IMU + distance sensors -> chassis.setPose() every 10 ms.
 /// A chassis.setPose() from anywhere else (auton start pose, distanceReset()) restarts the filter there.
