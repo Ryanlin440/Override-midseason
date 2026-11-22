@@ -10,18 +10,19 @@
 
 
 //for scoring only
-void openClaw() {
+// lowerMs: how long to drive the cascade toward 0 before opening
+void openClaw(int lowerMs = 250) {
+    moveCascadeTo(0, lowerMs); // lower from wherever it is, gives up after lowerMs
     claw.set_value(true);
     clawBool=true;
-    // pros::delay(500);
+    pros::delay(250);
 };
 
 
-void closeClaw(int timeoutMs) {
+void closeClaw(int timeoutMs = 1000, double cascadeLift = GRAB_LIFT_IN, int liftDelayMs = 0) {
      uint32_t start = pros::millis();
      pros::Task armTask([=]() {
         // same prediction + grab as L1Button() in main.cpp
-        constexpr double GRAB_LIFT_IN = 3; // how far to lift after grabbing
         constexpr int    GRAB_DIST_MM = 50; // minimum dist
         constexpr double CLAW_CLOSE_MS = 40; // how long it takes to actually close
         constexpr int    PREDICT_MAX_MM = 304; // a distance close enough for readings ~ 12 inches
@@ -44,11 +45,11 @@ void closeClaw(int timeoutMs) {
             if (shouldClose()) {
                 chassis.cancelAllMotions();
                 chassis.arcade(0, 0);
-                // grab: close (false = closed, same as main.cpp), wait for it, lift, done
+                // grab: close (false = closed, same as main.cpp), wait, lift, done
                 claw.set_value(false);
                 clawBool = false;
-                pros::delay(CLAW_CLOSE_MS);
-                moveCascadeTo(GRAB_LIFT_IN);
+                pros::delay(CLAW_CLOSE_MS + liftDelayMs); // always wait for the claw to close, plus any extra
+                moveCascadeTo(cascadeLift);
                 break;
             }
             pros::delay(10);
@@ -57,8 +58,6 @@ void closeClaw(int timeoutMs) {
         });
 
 }
-
-bool turningAgainstGoal = false;
 
 
 // ---------------------------------------------------------------------------

@@ -106,6 +106,8 @@ extern pros::Rotation cascade_sensor;
 extern lemlib::PID cascade_pid;
 //void moveCascadeTo(double target);
 void moveCascadeTo(double target, int timeoutMs = 2000);
+/// How far (inches) the cascade lifts after grabbing. Used by L1Button() and closeClaw().
+constexpr double GRAB_LIFT_IN = 3;
 
 constexpr float HS_AXLE_DIAMETER = 0.8f; 
 constexpr float CASCADE_TRAVEL_SCALE = 2.355f;//adjst this for new one
@@ -239,8 +241,8 @@ void startUkf();
 /// Set false to pause the UKF; LemLib's odometry runs alone and the UKF picks up from there.
 extern bool ukfEnabled;
 
-void closeClaw(int timeoutMs = 3000);
-void openClaw();
+void closeClaw(int timeoutMs, double cascadeLift, int liftDelayMs);
+void openClaw(int lowerMs);
 
 
 void EastWestAuton();

@@ -496,7 +496,6 @@ void L1Button(){
     // toggleMotor.move(-50);
     //     pros::delay(2000);
     pros::Task clawTask([]() {
-        constexpr double GRAB_LIFT_IN = 3; // how far to lift after grabbing 
         constexpr int    GRAB_DIST_MM = 50; // minimum dist
         constexpr double CLAW_CLOSE_MS = 40; // how long it takes to actually close
         constexpr int    PREDICT_MAX_MM = 304; // a distance close enough for readings ~ 12 inches
