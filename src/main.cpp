@@ -10,12 +10,14 @@
 #include "pros/misc.hpp"
 #include "pros/motor_group.hpp"
 #include "pros/motors.h"
+#include "pros/optical.h"
 #include "robot.h"
 #include <algorithm>
 #include <cmath>
 #include <cstdarg>
 #include <cstdio>
 #include <cstring>
+void L1Button();
 pros::MotorGroup right_motors({-11, 12, 13}, pros::MotorGearset::blue); // left motors use 600 RPM cartridges
 pros::MotorGroup left_motors({-20, -19, 18}, pros::MotorGearset::blue); // right motors use 200 RPM cartridges
 // drivetrain settings
@@ -29,7 +31,7 @@ lemlib::Drivetrain drivetrain(&left_motors, // left motor group
 
 // pros::Distance backSensor(20);
 pros::Distance frontSensor(15);
-pros::Distance leftSensor(3);
+pros::Distance leftSensor(7);
 pros::Distance rightSensor(1);
 
 // Which device goes with each sensor name in include/localization/robot_config.hpp (positions live
@@ -41,16 +43,16 @@ pros::Distance* distanceSensorFor(const char* name) {
     return nullptr;
 }
 
-ScaledImu imu(5, 1.0032, 1.0047); // left, right scales from spinTest(); right averages half + full speed runs
+ScaledImu imu(6, 1, 1); // left, right scales from spinTest(); right averages half + full speed runs
 // ScaledImu imu(5, 1.0000, 1.0000); // left, right scales from spinTest(); right averages half + full speed runs
-pros::Rotation vertical_rotation_sensor(10);
-pros::Rotation horizontal_rotation_sensor(9);
+pros::Rotation vertical_rotation_sensor(-10);
+pros::Rotation horizontal_rotation_sensor(-9);
 lemlib::TrackingWheel vertical_tracking_wheel(&vertical_rotation_sensor, lemlib::Omniwheel::NEW_2, -2.55);
 lemlib::TrackingWheel horizontal_tracking_wheel(&horizontal_rotation_sensor, lemlib::Omniwheel::NEW_2, -4.5);
 
-pros::MotorGroup cascade ({1, -2}, pros::v5::MotorGears::blue);//2 11w
+pros::MotorGroup cascade ({-16, 15}, pros::v5::MotorGears::blue);//2 11w
 pros::Rotation cascade_sensor(-3);
-lemlib::PID cascade_pid(250,-.1,150,10); // old (5,0,20) per degree, scaled to per inch
+lemlib::PID cascade_pid(48.7,4,389,0); // old (5,0,20) per degree, scaled to per inch
 float getCascadeInches() {
     return (cascade_sensor.get_position() / 100.0f) * INCHES_PER_DEGREE;
 }
@@ -63,11 +65,16 @@ void moveCascadeTo(double targetInches, int timeoutMs) {
         float error = targetInches - current_pos_inches;
         float output = cascade_pid.update(error);
 
+        // Below 0: the PID output is tiny this close to 0, so boost it to make sure it comes back up.
+        constexpr float BELOW_ZERO_BOOST = 40.0f; // min upward power while below 0 - raise if it still sags
+        if (current_pos_inches < 0) output = std::max(output, BELOW_ZERO_BOOST);
+
         output = std::clamp(output, -127.0f, 127.0f);
         cascade.move(output);
 
-        // stop moving if the target reached or if timer run out
-        if (std::abs(error) < .3 || pros::millis() - start > (uint32_t)timeoutMs) {
+        // stop when at target (and not below 0) or the timer runs out
+        bool atTarget = std::abs(error) < .3 && current_pos_inches >= 0;
+        if (atTarget || pros::millis() - start > (uint32_t)timeoutMs) {
             cascade.set_brake_mode(pros::MotorBrake::hold);
             cascade.move_velocity(0);
             break;
@@ -75,20 +82,19 @@ void moveCascadeTo(double targetInches, int timeoutMs) {
         pros::delay(10);
     }
 }
-pros::Motor toggleMotor(8);
-pros::Optical toggleSensor(7);
-// TODO: placeholder port/gearset -- update to the real toggles port(s)
+pros::Motor toggleMotor(-8,pros::v5::MotorGears::green);
+pros::Optical toggleSensor(2);
 bool clawBool = false;
-pros::adi::DigitalOut clawShut(2, clawBool);
-// TODO: placeholder ADI ports -- update to the real toggle ports
-pros::adi::DigitalOut toucher(1, false);
+pros::adi::DigitalOut claw(4, clawBool);
+pros::Distance clawSensor(17);
+
+pros::adi::DigitalOut toucherLeft(2, false);
+pros::adi::DigitalOut toucherRight(1, false); ///////////////////
+
 pros::adi::DigitalOut wedge(3, false);
 bool wedgeBool = false;
-bool toucherBool = false;
-
-
-pros::Distance claw_sensor(5);
-// pros::Distance backTopSensor(8);
+bool toucherLeftBool = false;
+bool toucherRightBool = false;
 
 
 
@@ -99,10 +105,10 @@ lemlib::OdomSensors sensors(&vertical_tracking_wheel, // vertical tracking wheel
                             &imu // inertial sensor
 );
 // lateral PID controller
-lemlib::ControllerSettings lateral_controller(7.5, // proportional gain (kP)
-                                              -.0005, // integral gain (kI)
-                                              35, // derivative gain (kD)
-                                              0, // anti windup
+lemlib::ControllerSettings lateral_controller(10.16, // proportional gain (kP)
+                                              .024672, // integral gain (kI)
+                                              277.163, // derivative gain (kD)
+                                              3, // anti windup
                                               1, // small error range, in inches
                                               100, // small error range timeout, in milliseconds
                                               3, // large error range, in inches
@@ -123,10 +129,10 @@ lemlib::ControllerSettings lateral_controller(7.5, // proportional gain (kP)
 // );
 
 // angular PID controller
-lemlib::ControllerSettings angular_controller(1.6, // proportional gain (kP)
-                                              .00, // integral gain (kI)
-                                              9, // derivative gain (kD)
-                                              0, // anti windup
+lemlib::ControllerSettings angular_controller(1.742, // proportional gain (kP)
+                                              .07687, // integral gain (kI)
+                                              26.112, // derivative gain (kD)
+                                              5, // anti windup
                                               1, // small error range, in degrees
                                               100, // small error range timeout, in milliseconds
                                             3, // large error range, in degrees
@@ -203,7 +209,7 @@ int pressNum = 0;
 bool printingDistances = true;
 bool armNeedsDown = true;
 bool isScoring = false;
-int opticalRefreshRate = 100;
+int opticalRefreshRate = 10; // ms sensor integration time; lower = fresher color readings
 void initialize() {
     pros::lcd::initialize(); // initialize brain screen
     registerBrainAutonSelector(); // brain left/right buttons pick the auton
@@ -211,17 +217,17 @@ void initialize() {
     cascade_sensor.reset_position();
     cascade.move_velocity(0);
 
-    // Start with claw clamped so we can have a pin.
-    clawBool = true;
-    clawShut.set_value(true);
 
     // So we aren't touching the toggle when match starts
-
     //light it up, set up refresh rate, somthing abt gestures
     toggleSensor.set_led_pwm(100);
+    pros::delay(200);
     toggleSensor.set_integration_time(opticalRefreshRate);//prob make lower if it doens't stop fast enough
     toggleSensor.disable_gesture();
-    // startAutoToggle(); // always-on color sort; set autoToggleEnabled = false to drive toggleMotor yourself
+    toggleMotor.set_brake_mode(pros::E_MOTOR_BRAKE_HOLD);
+    // pros::delay(100);
+
+    startAutoToggle(); // always-on color sort; set autoToggleEnabled = false to drive toggleMotor yourself
 
     pros::Task screenTask([&]() {
         while (true) {
@@ -273,9 +279,9 @@ void initialize() {
             pros::lcd::print(0, "X %7.2f  Y %7.2f  H %6.2f", pose.x, pose.y, heading);
             pros::lcd::print(1, "Front %.2f in   Cascade %.3f in",
                              (double)(frontSensor.get() / 25.4), (double)getCascadeInches());
-            pros::lcd::print(2, "Sort %s (%s)  hue %3.0f  prox %3d", isRed ? "RED" : "BLUE",
+            pros::lcd::print(2, "Sort %s (%s)  hue %3.0f  prox %3d  trv %4.0f", isRed ? "RED" : "BLUE",
                              autoToggleEnabled ? "auto" : "manual", toggleSensor.get_hue(),
-                             (int)toggleSensor.get_proximity());
+                             (int)toggleSensor.get_proximity(), toggleLastTravel);
 
             // ---- brain lines 3-7 (screenPrint messages)
             char messages[MESSAGE_LINES][48];
@@ -289,9 +295,8 @@ void initialize() {
     });
 
 
-    if (USE_UKF) startUkf(); // UKF owns the pose; status on line 7
-    else startPoseFusion(); // blends distance sensors into odom; gains on line 7
-    // startWallEstimatePrinter(); // raw distance-sensor x/y on line 7 instead (turn off fusion first)
+    // if (USE_UKF) startUkf(); // UKF owns the pose; status on line 7
+    // else startPoseFusion(); // blends distance sensors into odom; gains on line 7
 
     pros::Task cascadeTask([&]() {
         while (pickingAuton) pros::delay(20); // driver buttons do nothing until X
@@ -305,7 +310,6 @@ void initialize() {
                 continue;
             }
          
-            RightArrowButton();
             
 
             pros::delay(50);
@@ -321,7 +325,7 @@ void initialize() {
 
 /**
  * Runs while the robot is in the disabled state of Field Management System or
- * the VEX Competition Switch, following either autonomous or opcontrol. When
+ * the VEX Competition Switch, following either autonomous or opontrol. When
  * the robot is enabled, this task will exit.
  */
 void disabled() {}
@@ -332,7 +336,7 @@ void disabled() {}
  * competition-specific initialization routines, such as an autonomous selector
  * on the LCD.
  *
- * This task will exit when the robot is enabled and autonomous or opcontrol
+ * This task will exit when the robot is enabled and autonomous or opontrol
  * starts.
  */
 void competition_initialize() {
@@ -343,7 +347,7 @@ void competition_initialize() {
  * Runs the user autonomous code. This function will be started in its own task
  * with the default priority and stack size whenever the robot is enabled via
  * the Field Management System or the VEX Competition Switch in the autonomous
- * mode. Alternatively, this function may be called in initialize or opcontrol
+ * mode. Alternatively, this function may be called in initialize or opontrol
  * for non-competition testing purposes.
  *
  * If the robot is disabled or communications is lost, the autonomous task
@@ -393,12 +397,20 @@ void linearChassisPID(){
     pros::delay(5000);
 }
 
+bool L1Bool = false;
+float cascadeDownSpeed(){
+    // float a = fmax(0, getCascadeInches());
+    // return -120*pow(a,.3);
+    if(getCascadeInches() < 0)return 0;
+    return -127;
+}
 void opcontrol() {
     // the field kills autonomous() at 15 s, so it never gets to clear this itself
     autonRunning = false;
     poseFusionEnabled = false;
-    ukfEnabled = true; // UKF keeps running in driver control
-    // tuneCascadePID(5,80);
+    // ukfEnabled = true; // UKF keeps running in driver control
+
+    // tuneCascadePID(5,80); // blocks ~15 s and L1 does nothing until it's done - only enable to tune
     // tuneAngularPID(90,127);
     // tuneLateralPID(24,127);
     // pros::delay(10000000);
@@ -424,6 +436,7 @@ void opcontrol() {
     // pros::delay(1000000);
     
     // autonomous();
+    L1Button();
     while (true) {
 
         // get left y and right y positions
@@ -438,29 +451,20 @@ void opcontrol() {
         //     moveCascadeTo(0);
         // }
 
-        if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_UP)){
-            // distanceReset();
-            // moveCascadeTo(6,5000);
-        }
-        if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_DOWN)){
-            // distanceReset();
-            // moveCascadeTo(0,5000);
-        }
 
-        if(controller.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_B)){
+        if(controller.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_L2)){
             wedgeBool = !wedgeBool;
             wedge.set_value(wedgeBool);
         }
         if(controller.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_Y)){
-            toucherBool = !toucherBool;
-            toucher.set_value(toucherBool);
+            toucherRightBool = !toucherRightBool;
+            toucherRight.set_value(toucherRightBool);
         }
-
-        if(controller.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_L2)){
-            clawBool = !clawBool;
-            clawShut.set_value(clawBool);
+        if(controller.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_RIGHT)){
+            toucherLeftBool = !toucherLeftBool;
+            toucherLeft.set_value(toucherLeftBool);
         }
-        
+        manualToggle();
         double cascadePos = getCascadeInches();
         
         if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_B)){
@@ -469,13 +473,14 @@ void opcontrol() {
         else if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_R2)){
             // Only allow reverse if it is above 0
             if (cascadePos > 0.011) {
-                cascade.move(-127);
+                cascade.move(cascadeDownSpeed());
             } else {
-                cascade.move(0); // Lock it at the bottom
+                cascade.move(0); 
             }
         }
         else{
-            cascade.move(0); // Brake mode HOLD kicks in here
+            if(!L1Bool)
+                cascade.move(0); 
         }
         
         
@@ -486,25 +491,82 @@ void opcontrol() {
 }
 
 
-void R2Button_ryan() {
-    if (controller.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_R2)) {
-        clawBool = !clawBool;
-        clawShut.set_value(clawBool);
-    }
+
+void L1Button(){
+    // toggleMotor.move(-50);
+    //     pros::delay(2000);
+    pros::Task clawTask([]() {
+        constexpr double GRAB_LIFT_IN = 3; // how far to lift after grabbing 
+        constexpr int    GRAB_DIST_MM = 50; // minimum dist
+        constexpr double CLAW_CLOSE_MS = 40; // how long it takes to actually close
+        constexpr int    PREDICT_MAX_MM = 304; // a distance close enough for readings ~ 12 inches
+        constexpr double MIN_APPROACH = 0.05; // m/s, ignore noise below this
+
+        // true if the object will be in the claw by the time the pneumatics finish closing
+        auto shouldClose = [&]() {
+            int dist = clawSensor.get_distance();  
+            if (dist <= 0 || dist >= 9999) return false;   // no object / error
+            if (dist <= GRAB_DIST_MM) return true;
+            if (dist > PREDICT_MAX_MM) return false;
+            double approach =  clawSensor.get_object_velocity(); 
+            if (approach == PROS_ERR_F || !std::isfinite(approach)) return false;
+            if (approach < MIN_APPROACH) return false;
+            return (dist - GRAB_DIST_MM) / approach < CLAW_CLOSE_MS; // ms until it reaches grab point
+        };
+
+        auto grab = []() {
+            L1Bool = true;                 
+            claw.set_value(false); 
+            clawBool = false;
+            pros::delay(CLAW_CLOSE_MS);
+            moveCascadeTo(GRAB_LIFT_IN);
+            // pros::delay(1000);
+            L1Bool = false;
+        };
+
+        bool wasPressed = false;
+        bool grabbedThisPress = false; 
+        bool lowering = false;     
+
+        while (true) {
+            bool pressed = controller.get_digital(pros::E_CONTROLLER_DIGITAL_L1);
+            bool justPressed  = pressed && !wasPressed;
+            bool justReleased = !pressed && wasPressed;
+            wasPressed = pressed;
+
+            if (justPressed) {
+                grabbedThisPress = false;
+                lowering = !clawBool; // decide mode based on claw state at press time
+            }
+
+            if (lowering) {//open
+                if (pressed) {//go down
+                    L1Bool = true;//block the move(0)
+                    cascade.move(getCascadeInches() > 0.011 ? cascadeDownSpeed() : 0);
+                } else if (justReleased) {
+                    claw.set_value(true); // open
+                    clawBool = true;
+                    moveCascadeTo(0);
+                    L1Bool = false;
+                    lowering = false;//finished lowering cascade
+                }
+            } else if (clawBool) { // open
+                if (pressed && !grabbedThisPress && shouldClose()) {
+                    grab();
+                    grabbedThisPress = true; // ignore the eventual release
+                } else if (justReleased && !grabbedThisPress) {
+                    grab();
+                }
+            }
+
+            pros::delay(10);
+        }
+    });
 }
-void cascadeManual_ryan() {
-    if (controller.get_digital(pros::E_CONTROLLER_DIGITAL_L2)) {
-        cascade.move(127);
-    }else if(controller.get_digital(pros::E_CONTROLLER_DIGITAL_L1)){
-        cascade.move(-127);
-    }else{
-        cascade.move(0);
-    }
-}
-void manualToggle_ryan() {
+void manualToggle() {
     // Hold R1 to run the toggle by hand; the auto toggle task backs off while it's held.
     static bool manual = false;
-    if (controller.get_digital(pros::E_CONTROLLER_DIGITAL_R1)) {
+    if (controller.get_digital(pros::E_CONTROLLER_DIGITAL_DOWN)) {
         manual = true;
         autoToggleEnabled = false;
         toggleMotor.move(100);
@@ -517,94 +579,115 @@ void manualToggle_ryan() {
 }
 
 
-
-void RightArrowButton(){
-    if(controller.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_RIGHT)){//ARM movement
-        isScoring = true;
-                
-        // lower cascade
-        moveCascadeTo(cascadeRestHeight, 600);
-        
-        // open claw
-        clawBool = false;
-        clawShut.set_value(false);
-
-        // wait for driver to back away
-        double startPosition = left_motors.get_position(); 
-        uint32_t waitStart = pros::millis();
-        
-        while (true) {
-            double currentPosition = left_motors.get_position();
-            double degreesMoved = std::abs(currentPosition - startPosition);
-            
-            // timeout if takes too long
-            if (degreesMoved > 150.0 || pros::millis() - waitStart > 1000) {
-                break;
-            }
-            pros::delay(10); 
-        }
-        
-        // return to resting height
-        moveCascadeTo(cascadeRestHeight, 600);
-        armNeedsDown = true;
-        
-        isScoring = false;
-    }
-};
-
-
-
-
-void clampClaw(){//different from close cause close claw uses distance sensor
-    clawBool = true;
-    clawShut.set_value(clawBool);
-}
 bool autoToggleEnabled = true;
+
+
+// Color sort: spin at a fixed speed until our color is in front of the sensor, then stop and hold.
+// "trv" on brain line 2 = degrees the toggle coasted after seeing our color (how far it overshot
+// because of sensor lag + braking). If it keeps stopping past our color, lower kSearchSpeedFrac.
+constexpr double kSearchSpeedFrac = 0.8; // fraction of max rpm while searching - lower = more accurate stop
+constexpr uint32_t kMaxSpinMs = 5000;    // give up on an object after this long (jammed / no colors seen)
+constexpr uint32_t kWrongMs = 150;       // after stopping, re-sort if it reads "not ours" this long (someone turned it)
+constexpr double kBumpDeg = 30;          // after giving up, retry if the toggle gets turned this far by hand
+double toggleLastTravel = 0;
+
+static bool hueIsRed(double hue) { return hue > 350 || hue < 35; }
+static bool hueIsBlue(double hue) { return hue > 100 && hue < 240; }
+
+static int toggleMaxRpm() {
+    switch (toggleMotor.get_gearing()) {
+        case pros::v5::MotorGears::red: return 100;
+        case pros::v5::MotorGears::blue: return 600;
+        default: return 200;
+    }
+}
 
 void startAutoToggle() {
     pros::Task toggleTask([]() {
-        constexpr uint32_t kMaxSpinMs = 5000; // stop if one object keeps it spinning this long (jammed / wrong color stuck)
-        uint32_t spinStart = 0;
-        bool spinning = false;
+        enum class State { Idle, Search, Done };
+        State state = State::Idle;
+        uint32_t stateStart = 0;
+        double stopPos = 0, gaveUpPos = 0;
+        uint32_t stopTime = 0, notOursSince = 0;
         bool gaveUp = false;
+        const int searchRpm = (int)(toggleMaxRpm() * kSearchSpeedFrac);
 
         while (pickingAuton) pros::delay(20);
 
         while (true) {
-            if (controller.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_Y)) {
+            if (controller.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_X)) {
                 isRed = !isRed;
-            }//toggles colors for testing
+            } // toggles colors for testing
+
             if (!autoToggleEnabled) { // don't touch it - we r manually spinning
-                spinning = false;
+                state = State::Idle;
                 gaveUp = false;
-                pros::delay(20);
+                pros::delay(10);
                 continue;
             }
 
-            bool objectPresent = toggleSensor.get_proximity() > 100;//check this value
-            bool shouldSpin = false;
-            if (objectPresent && !gaveUp) {
-                double hue = toggleSensor.get_hue();
-                bool detectsRed = (hue > 340 || hue < 20);
-                bool detectsBlue = (hue < 240 && hue > 200);
-                // bool detectsYellow = (hue > 40 && hue < 70);
-                bool detectsOurs = isRed ? detectsRed : detectsBlue;
-                shouldSpin = !detectsOurs; // stop spinning once we see our color
-            }
-            if (!objectPresent) gaveUp = false; // object left, so we reset
+            bool objectPresent = toggleSensor.get_proximity() > 100; // check this value
+            double hue = toggleSensor.get_hue();
+            bool seesRed = hueIsRed(hue), seesBlue = hueIsBlue(hue);
+            bool seesOurs = isRed ? seesRed : seesBlue;
+            bool seesOpposite = isRed ? seesBlue : seesRed;
+            uint32_t now = pros::millis();
 
-            if (shouldSpin) {//most of the time spin- just check if timeout here
-                if (!spinning) spinStart = pros::millis();//start the counter
-                spinning = true;
-                if (pros::millis() - spinStart > kMaxSpinMs) {//took too long, give up, dont start till back away
-                    gaveUp = true;
-                    shouldSpin = false;
-                }
+            if (!objectPresent) { // object left: reset
+                gaveUp = false;
+                if (state != State::Idle) toggleMotor.move_velocity(0);
+                state = State::Idle;
             }
-            if (!shouldSpin) spinning = false; //timedout or detecing correct collor
 
-            toggleMotor.move(shouldSpin ? 127 : 0);
-            pros::delay(opticalRefreshRate);
+            switch (state) {
+                case State::Idle:
+                    // Gave up, but someone turned it by hand since: try again.
+                    if (gaveUp && std::fabs(toggleMotor.get_position() - gaveUpPos) > kBumpDeg) gaveUp = false;
+                    if (objectPresent && !gaveUp) {
+                        if (seesOurs) {
+                            toggleMotor.move_velocity(0); // already right, hold
+                        } else {
+                            state = State::Search;
+                            stateStart = now;
+                        }
+                    }
+                    break;
+
+                case State::Search:
+                    toggleMotor.move_velocity(searchRpm);
+                    if (seesOurs) {
+                        toggleMotor.move_velocity(0); // brake mode HOLD keeps it there
+                        stopPos = toggleMotor.get_position();
+                        stopTime = now;
+                        notOursSince = 0;
+                        state = State::Done;
+                    } else if (now - stateStart > kMaxSpinMs) {
+                        toggleMotor.move_velocity(0);
+                        gaveUp = true; // don't retry until the object leaves or gets turned by hand
+                        gaveUpPos = toggleMotor.get_position();
+                        state = State::Idle;
+                    }
+                    break;
+
+                case State::Done:
+                    // Holding on ours. Keep watching: if it overshot, or a human turns it off our
+                    // color later, sort again.
+                    if (now - stopTime < 300) toggleLastTravel = toggleMotor.get_position() - stopPos; // coast only
+                    if (seesOurs) {
+                        notOursSince = 0;
+                    } else if (notOursSince == 0) {
+                        notOursSince = now;
+                    }
+                    // Opposite color = re-sort right away. No color / edge = wait kWrongMs so a
+                    // noisy reading or a face edge doesn't make it twitch.
+                    if (seesOpposite || (notOursSince != 0 && now - notOursSince > kWrongMs)) {
+                        state = State::Search;
+                        stateStart = now;
+                    }
+                    break;
+            }
+
+            pros::delay(10);
         }
     });
 }

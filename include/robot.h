@@ -38,7 +38,7 @@ extern lemlib::Chassis chassis;
 extern pros::Distance frontSensor;
 extern pros::Distance leftSensor;
 extern pros::Distance rightSensor;
-extern pros::Distance claw_sensor;
+extern pros::Distance clawSensor;
 /// The pros::Distance for a sensor name in include/localization/robot_config.hpp, or nullptr.
 pros::Distance* distanceSensorFor(const char* name);
 
@@ -107,15 +107,13 @@ extern lemlib::PID cascade_pid;
 //void moveCascadeTo(double target);
 void moveCascadeTo(double target, int timeoutMs = 2000);
 
-constexpr float HS_AXLE_DIAMETER = 0.25f; 
-// cascade stages multiply travel; calibrated so brain-screen inches match a ruler (8.5 in real move)
-constexpr float CASCADE_TRAVEL_SCALE = 2.355f;
+constexpr float HS_AXLE_DIAMETER = 0.8f; 
+constexpr float CASCADE_TRAVEL_SCALE = 2.355f;//adjst this for new one
 constexpr float INCHES_PER_DEGREE = (HS_AXLE_DIAMETER * 3.14159f) / 360.0f * CASCADE_TRAVEL_SCALE;
 
-constexpr float cascadeRestHeight = 0;
 float getCascadeInches();
 
-extern pros::adi::DigitalOut clawShut;
+extern pros::adi::DigitalOut claw;
 extern bool clawBool;
 extern pros::adi::DigitalOut toucher;
 extern pros::adi::DigitalOut wedge;
@@ -125,11 +123,13 @@ extern pros::adi::DigitalOut wedge;
 extern pros::Motor toggleMotor;
 extern pros::Optical toggleSensor;
 /// Starts the always-on toggle task (called from initialize()). While autoToggleEnabled is true it
-/// spins toggleMotor whenever an object is in front of toggleSensor until our alliance color (isRed)
-/// is seen, and gives up on an object after 5 s. Nothing in front = motor off.
+/// spins toggleMotor at a fixed speed until OUR color is seen, then stops and holds. Gives up on an
+/// object after 5 s. Nothing in front = off.
 void startAutoToggle();
 /// Set false before driving toggleMotor yourself (driver button, auton), true to hand it back.
 extern bool autoToggleEnabled;
+/// Degrees the toggle coasted after seeing our color (overshoot) - debug readout.
+extern double toggleLastTravel;
 
 
 // ---------------------------------------------------------------- controller
@@ -204,7 +204,7 @@ extern double spinTestPeakRate;
 
 
 
-void RightArrowButton();
+void manualToggle();
 
 
 
@@ -247,4 +247,3 @@ void EastWestAuton();
 void SkillsAuton();
 void NorthSouthAuton();
 
-void clampClaw();

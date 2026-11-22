@@ -10,7 +10,7 @@
 
 //for scoring only
 void openClaw() {
-    clawShut.set_value(false);
+    claw.set_value(false);
     clawBool=false;
     // pros::delay(500);
 };
@@ -23,11 +23,11 @@ void closeClaw(int timeoutMs) {
      pros::Task armTask([=]() {
         while (pros::millis() - start < (uint32_t)timeoutMs) {
             chassis.arcade(40,0);
-            if (clawBool == false && claw_sensor.get_distance() < 50) {  
+            if (clawBool == false && clawSensor.get_distance() < 50) {  
                 chassis.cancelAllMotions();
                 // 2. Clamp the object
                 clawBool = true;
-                clawShut.set_value(true);
+                claw.set_value(true);
                 break;
             }
             pros::delay(30);
@@ -57,7 +57,7 @@ void movementRightSide(){
 
     chassis.moveToPoint(47, 17.8, 1000);
     pros::delay(500);
-    moveCascadeTo(cascadeRestHeight,1000);
+    
     openClaw();
     pros::delay(250);
 
@@ -66,7 +66,7 @@ void movementRightSide(){
     chassis.moveToPoint(47,10, 400, {.forwards = false});
 
     chassis.turnToPoint(29.5, 19, 700);
-    moveCascadeTo(cascadeRestHeight,1000);
+    
 
     // Get the first cup/pin and get it
     chassis.moveToPoint(29.5, 19, 2000);
@@ -88,7 +88,7 @@ void movementRightSide(){
     // second cup/pin and get it
     chassis.turnToPoint(47, 38, 2000);
     chassis.moveToPoint(47, 38, 2000);
-    moveCascadeTo(cascadeRestHeight,1000);
+    
     // pros::delay(1000);
     closeClaw();//?
 
@@ -137,7 +137,7 @@ void NorthSouthAuton() {
     //score
     pros::delay(500);
     // moveArmToHold(0);
-    moveCascadeTo(cascadeRestHeight,1000);
+    
     openClaw();
     chassis.turnToPoint(10, 47, 200, {.forwards = false});
     pros::delay(150);
@@ -145,12 +145,12 @@ void NorthSouthAuton() {
     // Get out of the way and face towards the first cup/pin
     chassis.moveToPoint(10,47, 400, {.forwards = false});
     // moveArmToHold(downArmDegPinAndCup);
-    moveCascadeTo(cascadeRestHeight,1000);
+    
 
     //move so that we can swing to position
     chassis.turnToPoint(13, 58.5, 1000);
     // moveArmToHold(downArmDegPinAndCup);
-    moveCascadeTo(cascadeRestHeight,1000);
+    
     chassis.moveToPoint(13, 58.5, 2000);           //can probably motion change this part
     chassis.turnToPoint(36, 58.5, 2000);
     chassis.moveToPoint(36, 58.5, 2000, {.earlyExitRange=1});
@@ -263,7 +263,6 @@ void SkillsAuton() {
     chassis.turnToPoint(60, -30, 500);
     chassis.moveToPoint(60,-30, 500);
     // moveArmToHold(downArmDegPinAndCup, 1000);
-    moveCascadeTo(cascadeRestHeight,1000);
 
     // CLEARING
     chassis.turnToPoint(35, -59, 1000, {.forwards = false});
@@ -280,7 +279,6 @@ void SkillsAuton() {
     pros::delay(250);
     //moveArmToHold(downArmDegPinAndCup+5);
     //chassis.moveToPoint(57, -58, 250);
-    moveCascadeTo(cascadeRestHeight,1000);
     // moveArmTo(downArmDegPinAndCup, 600, 60.0f); 
     
     for(int i = 1; i <= 4; i++){
@@ -301,7 +299,6 @@ void SkillsAuton() {
         openClaw();
         pros::delay(250);
         // moveArmToHold(downArmDegPinAndCup);
-        moveCascadeTo(cascadeRestHeight,1000);
         if(i == 4) break;
 
         // Get back in front of matchloader
@@ -320,7 +317,6 @@ void SkillsAuton() {
         pros::delay(250);
         //moveArmToHold(downArmDegPinAndCup+5);
         //chassis.moveToPoint(57, -58, 250);
-        moveCascadeTo(cascadeRestHeight,1000);
         
     }
 
