@@ -18,8 +18,8 @@
 #include <cstdio>
 #include <cstring>
 void L1Button();
-pros::MotorGroup right_motors({-11, 12, 13}, pros::MotorGearset::blue); // left motors use 600 RPM cartridges
-pros::MotorGroup left_motors({-20, -19, 18}, pros::MotorGearset::blue); // right motors use 200 RPM cartridges
+pros::MotorGroup right_motors({-11, 12, 13}, pros::MotorGearset::blue);
+pros::MotorGroup left_motors({-20, -19, 18}, pros::MotorGearset::blue); 
 // drivetrain settings
 lemlib::Drivetrain drivetrain(&left_motors, // left motor group
                               &right_motors, // right motor group
