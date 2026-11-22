@@ -588,7 +588,6 @@ bool autoToggleEnabled = true;
 constexpr double kSearchSpeedFrac = 0.8; // fraction of max rpm while searching - lower = more accurate stop
 constexpr uint32_t kMaxSpinMs = 5000;    // give up on an object after this long (jammed / no colors seen)
 constexpr uint32_t kWrongMs = 150;       // after stopping, re-sort if it reads "not ours" this long (someone turned it)
-constexpr double kBumpDeg = 30;          // after giving up, retry if the toggle gets turned this far by hand
 double toggleLastTravel = 0;
 
 static bool hueIsRed(double hue) { return hue > 350 || hue < 35; }
@@ -607,7 +606,7 @@ void startAutoToggle() {
         enum class State { Idle, Search, Done };
         State state = State::Idle;
         uint32_t stateStart = 0;
-        double stopPos = 0, gaveUpPos = 0;
+        double stopPos = 0;
         uint32_t stopTime = 0, notOursSince = 0;
         bool gaveUp = false;
         const int searchRpm = (int)(toggleMaxRpm() * kSearchSpeedFrac);
@@ -641,8 +640,6 @@ void startAutoToggle() {
 
             switch (state) {
                 case State::Idle:
-                    // Gave up, but someone turned it by hand since: try again.
-                    if (gaveUp && std::fabs(toggleMotor.get_position() - gaveUpPos) > kBumpDeg) gaveUp = false;
                     if (objectPresent && !gaveUp) {
                         if (seesOurs) {
                             toggleMotor.move_velocity(0); // already right, hold
@@ -663,8 +660,7 @@ void startAutoToggle() {
                         state = State::Done;
                     } else if (now - stateStart > kMaxSpinMs) {
                         toggleMotor.move_velocity(0);
-                        gaveUp = true; // don't retry until the object leaves or gets turned by hand
-                        gaveUpPos = toggleMotor.get_position();
+                        gaveUp = true; // don't retry until the object leaves
                         state = State::Idle;
                     }
                     break;
