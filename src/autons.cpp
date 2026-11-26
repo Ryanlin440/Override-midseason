@@ -9,7 +9,6 @@
 
 
 
-//for scoring only
 // lowerMs: how long to drive the cascade toward 0 before opening
 void openClaw(int lowerMs = 250) {
     moveCascadeTo(0, lowerMs); // lower from wherever it is, gives up after lowerMs
@@ -64,21 +63,135 @@ void closeClaw(int timeoutMs = 1000, double cascadeLift = GRAB_LIFT_IN, int lift
 // Autonomous routines
 // ---------------------------------------------------------------------------
 
-void movementRightSide(){
+void movementNearSide(){
+    //Setting up inital Pos
+    chassis.setPose(-63, 0, 90);
+    distanceReset(90, false, true);
+
+    //Toggling
+
+    //ask ryan
+
+    // Scoring first pin
+    chassis.turnToPoint(-56, 0, 500);
+    chassis.moveToPoint(-56, 0, 500, {.minSpeed = 127});
+
+    chassis.moveToPoint(-47, -16, 500);
+
+    // Getting out of way
+    chassis.moveToPoint(-52, -8, 500, {.forwards = false, .minSpeed = 127});
+
+    // Getting first pin/cup stack & scoring
+    chassis.turnToPoint(-28, -21, 500);
+    chassis.moveToPoint(-28, -21, 500);
+
+    chassis.turnToPoint(-41, -24, 500);
+    chassis.moveToPoint(-41, -24, 500);
+
+    // Getting second pin/cup stack & scoring
+    chassis.moveToPoint(-31, -31, 500, {.forwards = false});
+    chassis.turnToPoint(-43, -43, 500);
+    chassis.moveToPoint(-43, -43, 500);
+
+    chassis.turnToPoint(-47, -30, 500);
+    chassis.moveToPoint(-47, -30, 500);
     
+
 }
 //near side
-void EastWestAuton() {
+void NearSideAutonOneStack() {
+    // Getting third pin/cup stack from wall & scoring
+    chassis.moveToPoint(-47, -38, 500, {.forwards = false});
+    chassis.turnToPoint(-58, -29, 500);
+    chassis.moveToPoint(-58, -29, 500);
+
+    chassis.moveToPoint(-68, -23, 500);
+
+    chassis.turnToPoint(-54, -24, 500);
+    chassis.moveToPoint(-54, -24, 500);
 
 }
 //far side
-void NorthSouthAuton() {
+void FarSideAutonAWP() {
+    //Setting up inital Pos
+    chassis.setPose(0, -63, 0);
+    distanceReset(0, true, false);
 
+    //Toggling
+
+    //ask ryan
+
+    // Scoring first pin
+    chassis.turnToPoint(0, -56, 500);
+    chassis.moveToPoint(0, -56, 500, {.minSpeed = 127});
+
+    chassis.moveToPoint(-16, -47, 500);
+
+    // Getting out of way
+    chassis.moveToPoint(-8, -47, 500, {.forwards = false, .minSpeed = 127});
+
+    // Getting in position for wall stack
+    chassis.turnToPoint(-23, -60, 500);
+    chassis.moveToPoint(-23, -60, 500);
+
+    // Getting wall stack
+    chassis.turnToPoint(-24, -65, 500);
+    chassis.moveToPoint(-24, -65, 500);
+
+    // Clearing
+    chassis.turnToPoint(0, -47, 500, {.forwards = false});
+    chassis.moveToPoint(0, -47, 500, {.forwards = false});
+
+    // Going to goal & scoring
+    chassis.turnToPoint(16, -47, 500);
+    chassis.moveToPoint(16, -47, 500);
+
+    // The reverse
+
+    // Getting out of way
+    chassis.moveToPoint(8, -47, 500, {.forwards = false, .minSpeed = 127});
+
+    // Getting in position for wall stack
+    chassis.turnToPoint(23, -60, 500);
+    chassis.moveToPoint(23, -60, 500);
+
+    // Getting wall stack
+    chassis.turnToPoint(24, -65, 500);
+    chassis.moveToPoint(24, -65, 500);
+
+    // Clearing
+    chassis.turnToPoint(0, -47, 500, {.forwards = false});
+    chassis.moveToPoint(0, -47, 500, {.forwards = false});
+
+    // Going to goal & scoring
+    chassis.turnToPoint(-16, -47, 500);
+    chassis.moveToPoint(-16, -47, 500);
+
+    // Clearing for middle stack
+    chassis.moveToPoint(-9, -47, 500, {.forwards = false});
+
+    // Grabbing middle stack
+    chassis.turnToPoint(-21, -27, 500);
+    chassis.moveToPoint(-21, -27, 500);
+
+    // Going to last goal
+    chassis.turnToPoint(-47, 16, 500);
+    chassis.moveToPoint(-47, 16, 500);
+
+    // Toggling
+    chassis.turnToPoint(-56, 8, 500, {.forwards = false});
+    chassis.moveToPoint(-56, 8, 500, {.forwards = false, .minSpeed = 127});
+
+    chassis.moveToPoint(-63, 0, 500, {.forwards = false, .minSpeed = 127});
+
+    // Moving away from toggle
+    chassis.moveToPoint(-60, 0, 500, {.minSpeed = 127});
+    pros::delay(10);
 }
 
 
 void SkillsAuton() {
-    
+    movementNearSide();
 }
 // ---------------------------------------------------------------------------
 // Test / tuning routines

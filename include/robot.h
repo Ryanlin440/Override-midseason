@@ -245,7 +245,7 @@ void closeClaw(int timeoutMs, double cascadeLift, int liftDelayMs);
 void openClaw(int lowerMs);
 
 
-void EastWestAuton();
+void NearSideAuton();
 void SkillsAuton();
-void NorthSouthAuton();
+void FarSideAuton();
 
