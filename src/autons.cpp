@@ -189,9 +189,134 @@ void FarSideAutonAWP() {
     pros::delay(10);
 }
 
+void resettingForSkillsFirstGoal(){
+    // Resetting
+    chassis.moveToPoint(-47, -59, 1000, {.forwards = false});
+    chassis.turnToPoint(-65, -59, 500);
+    chassis.moveToPoint(-65, -59, 500);
 
+    // Grabbing from matchloader
+    chassis.turnToPoint(-65, -59, 500);
+    chassis.moveToPoint(-65, -59, 500);
+
+    // Resetting #2
+    chassis.moveToPoint(-47, -59, 1000, {.forwards = false});
+}
+
+void skillsFirstGoal(int cascadeHeight){
+    resettingForSkillsFirstGoal();
+
+    // Scoring
+    chassis.turnToPoint(-47, -30, 500);
+    chassis.moveToPoint(-47, -30, 500);
+}
+
+void spinMoveToGoal(){
+    // Spin moveeeee
+    chassis.turnToPoint(-38, -47, 500, {.forwards = false, .minSpeed = 127});
+    chassis.moveToPoint(-38, -47, 500, {.forwards = false});
+
+    // Spin moveeeee part 2
+    chassis.turnToPoint(-30, -47, 500);
+    chassis.moveToPoint(-30, -47, 500);
+}
+
+void spinMoveReverse(){
+    // Get into position
+    chassis.moveToPoint(-38, -47, 500, {.forwards = false});
+
+    // Spin moveeeee
+    chassis.turnToPoint(-47, -59, 500, {.forwards = false, .minSpeed = 127});
+    chassis.moveToPoint(-47, -59, 500, {.forwards = false});
+    // Spin moveeeee part 2
+    chassis.turnToPoint(-38, -47, 500);
+    chassis.moveToPoint(-38, -47, 500);
+
+    // Move to Matchloader
+    chassis.turnToPoint(-65, -59, 500);
+    chassis.moveToPoint(-65, -59, 500);
+
+}
+
+void scoreMiddle(int cascadeHeight){
+    // Score in middle
+    chassis.turnToPoint(0, 0, 500);
+    chassis.moveToPoint(0, 0, 500);
+}
 void SkillsAuton() {
     movementNearSide();
+    // Loop #1 on near side Alliance goal, stack #1
+    skillsFirstGoal(10);
+
+    // This grabs from matchloader only the pin, ends at the middle point, stack #2
+    resettingForSkillsFirstGoal();
+
+    // Loop #1 on far side Alliance goal, stack #3
+        //Spin move, ends at the goal
+        spinMoveToGoal();
+
+        //Spin move reverse, ends at the matchloader
+        spinMoveReverse();
+
+        // Goes to reset point.
+        chassis.moveToPoint(-47, -59, 500, {.forwards = false});
+
+    // Loop #2 on far side Alliance goal, stack #4
+        //Spin move, ends at the goal
+        spinMoveToGoal();
+
+        //Spin move reverse, ends at the matchloader
+        spinMoveReverse();
+
+        // Goes to reset point.
+        chassis.moveToPoint(-47, -59, 500, {.forwards = false});
+
+    // Loop #3 on far side Alliance goal, stack #5
+        //Spin move, ends at the goal
+        spinMoveToGoal();
+
+        //Spin move reverse, ends at the matchloader
+        spinMoveReverse();
+
+        // Goes to reset point.
+        chassis.moveToPoint(-47, -59, 500, {.forwards = false});
+
+    // Loop #4 on far side Alliance goal, stack #6 & last pin.
+        //Spin move, ends at the goal
+        spinMoveToGoal();
+
+        //Spin move reverse, ends at the matchloader
+        spinMoveReverse();
+
+        // Goes to reset point.
+        chassis.moveToPoint(-47, -59, 500, {.forwards = false});
+
+    // Go toggle
+    chassis.turnToPoint(-10, -59, 500, {.forwards = false});
+    chassis.moveToPoint(-10, -59, 1000, {.forwards = false});
+
+    // Touch the wall
+    chassis.turnToPoint(0, -65, 500, {.forwards = false});
+    chassis.moveToPoint(0, -65, 1000, {.forwards = false});
+
+    // Go middle
+    chassis.turnToPoint(10, -10, 500);
+    chassis.moveToPoint(10, -10, 1000, {.minSpeed = 127});
+
+    scoreMiddle(5);
+
+    // Grab first stack
+    chassis.turnToPoint(22, 22, 500);
+    chassis.moveToPoint(22, 22, 500);
+
+    scoreMiddle(7);
+
+    // Grab second stack
+    chassis.turnToPoint(46, 46, 500);
+    chassis.moveToPoint(46, 46, 500);
+
+    scoreMiddle(9);
+
 }
 // ---------------------------------------------------------------------------
 // Test / tuning routines
