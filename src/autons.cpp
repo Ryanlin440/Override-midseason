@@ -17,8 +17,7 @@ void openClaw(int lowerMs = 250) {
     pros::delay(250);
 };
 
-
-void closeClaw(int timeoutMs = 1000, double cascadeLift = GRAB_LIFT_IN, int liftDelayMs = 0) {
+void closeClawSearching(int timeoutMs = 1000, double cascadeLift = GRAB_LIFT_IN, int liftDelayMs = 0) {
      uint32_t start = pros::millis();
      pros::Task armTask([=]() {
         // same prediction + grab as L1Button() in main.cpp
@@ -58,6 +57,14 @@ void closeClaw(int timeoutMs = 1000, double cascadeLift = GRAB_LIFT_IN, int lift
 
 }
 
+void closeClawReg(){
+    claw.set_value(false);
+    clawBool = false;
+}
+
+void toggleAuto(){
+    
+}
 
 // ---------------------------------------------------------------------------
 // Autonomous routines
@@ -189,6 +196,7 @@ void FarSideAutonAWP() {
     pros::delay(10);
 }
 
+// -----------Helpers for Skills ---------------
 void resettingForSkillsFirstGoal(){
     // Resetting
     chassis.moveToPoint(-47, -59, 1000, {.forwards = false});
@@ -243,6 +251,8 @@ void scoreMiddle(int cascadeHeight){
     chassis.turnToPoint(0, 0, 500);
     chassis.moveToPoint(0, 0, 500);
 }
+// -----------Helpers for Skills ---------------
+
 void SkillsAuton() {
     movementNearSide();
     // Loop #1 on near side Alliance goal, stack #1
@@ -424,6 +434,6 @@ void spinTest() {
 }
 
 void testing(){
-    closeClaw(10000);
+    closeClawSearching(10000);
 
 }
