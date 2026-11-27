@@ -333,7 +333,7 @@ void autonomous() {
 
     poseFusionEnabled = true;
     ukfEnabled = true;
-    // runs whatever the brain/controller selector shows, from its start pose in autons[]
+    // runs whatever the brain/controller selector shows; the route sets its own start pose
     runSelectedAuton();
 }
 

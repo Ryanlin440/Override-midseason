@@ -142,7 +142,7 @@ void toggleAuto(int timeoutMs = 1000) {
 void movementNearSide(){
     //Setting up inital Pos
     chassis.setPose(-63, 0, 90);
-    distanceReset(90, false, true);
+    // distanceReset(90, false, true);
 
     //Toggling
     toggleAuto(1000);
@@ -245,6 +245,9 @@ void scoreMiddle(){
 // ---------------------------------------------------------------------------
 
 void NearSideAutonOneStack() {
+
+    movementNearSide();
+
     // Getting third pin/cup stack from wall & scoring
     chassis.moveToPoint(-47, -38, 500, {.forwards = false});
     chassis.turnToPoint(-58, -29, 500);
@@ -266,7 +269,7 @@ void NearSideAutonOneStack() {
 void FarSideAutonAWP() {
     //Setting up inital Pos
     chassis.setPose(0, -63, 0);
-    distanceReset(0, true, false);
+    // distanceReset(0, true, false);
 
     //Toggling
     toggleAuto();

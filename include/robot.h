@@ -162,7 +162,7 @@ void toggleAlliance();
 void registerBrainAutonSelector();
 /// Controller Left/Right picker for competition_initialize(); runs until PROS ends it.
 void competitionAutonSelector();
-/// For autonomous(): sets the selected route's start pose (unless locked in with X), then runs it.
+/// For autonomous(): runs the selected route. The route sets its own start pose.
 void runSelectedAuton();
 
 // Tuning routines, callable from opcontrol() for testing.

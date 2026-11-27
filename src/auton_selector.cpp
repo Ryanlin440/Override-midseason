@@ -9,26 +9,26 @@
 // ---------------------------------------------------------------------------
 // Auton selector -- shown on controller line 2 and brain line 6. Left/Right on
 // the controller or the brain's left/right buttons to choose; both stay in sync.
-//   1st X: locks in the route and sets its start pose. Odometry keeps
-//          tracking from there, so the robot can be pushed into place.
+//   1st X: locks in the route.
 //   2nd X: starts the route (only without a competition switch/field; on a
 //          switch/field, autonomous() starts it instead).
+// The selector never sets the robot's position: each route calls chassis.setPose()
+// itself as its first line.
 // To add a route, write the function in autons.cpp, declare it in robot.h, and
-// add a line here with its start pose (keep Testing last).
+// add a line here (keep Testing last).
 // ---------------------------------------------------------------------------
 
 struct AutonRoute {
     const char* name;
     void (*run)(); // nullptr = no auton, straight to driver control
-    float x, y, theta; // start pose set on the first X press
 };
 
 AutonRoute autons[] = {
-    {"Driver", nullptr, 0, 0, 0},
-    {"NearSide Auton", NearSideAutonOneStack, 61.5, 0, 90},
-    {"FarSide Auton", FarSideAutonAWP, 0, 61.5, 0},
-    {"Skills Auton", SkillsAuton, 61.5, 0, 90},
-    {"Testing", testing, 0, 0, 0},
+    {"Driver", nullptr},
+    {"NearSide Auton", NearSideAutonOneStack},
+    {"FarSide Auton", FarSideAutonAWP},
+    {"Skills Auton", SkillsAuton},
+    {"Testing", testing},
 };
 constexpr int autonCount = sizeof(autons) / sizeof(autons[0]);
 
@@ -113,10 +113,9 @@ void autonSelector() {
     AutonRoute& route = autons[selectedAuton];
     screenPrint(SCREEN_AUTON, "Auton: %s [%s] (locked)", route.name, allianceName());
 
-    // step 2: set the start pose, then wait for the second X to start.
+    // step 2: wait for the second X to start.
     if (route.run) {
-        chassis.setPose(route.x, route.y, route.theta);
-        pros::delay(60);
+        pros::delay(60); // the controller drops prints sent too close together
         controller.print(2, 0, "X to start    ");
         uint32_t lastPrint = pros::millis();
         while (!controller.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_X)) {
@@ -152,9 +151,6 @@ void runAuton() {
 }
 
 void runSelectedAuton() {
-    AutonRoute& route = autons[selectedAuton];
-    // if it was locked in with X, the pose was already set there and odom has tracked since
-    if (!autonLocked && route.run) chassis.setPose(route.x, route.y, route.theta);
     autonLocked = true;
     runAuton();
 }
