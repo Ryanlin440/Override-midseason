@@ -43,8 +43,7 @@ pros::Distance* distanceSensorFor(const char* name) {
     return nullptr;
 }
 
-ScaledImu imu(6, 1, 1); // left, right scales from spinTest(); right averages half + full speed runs
-// ScaledImu imu(5, 1.0000, 1.0000); // left, right scales from spinTest(); right averages half + full speed runs
+ScaledImu imu(4, 1.00375, 1.00436); // left, right scales from spinTest(); 90% Half speed 10% Full speed
 pros::Rotation vertical_rotation_sensor(-10);
 pros::Rotation horizontal_rotation_sensor(-9);
 lemlib::TrackingWheel vertical_tracking_wheel(&vertical_rotation_sensor, lemlib::Omniwheel::NEW_2, -2.55);
