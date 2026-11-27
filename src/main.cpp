@@ -56,32 +56,7 @@ lemlib::PID cascade_pid(48.7,4,389,0); // old (5,0,20) per degree, scaled to per
 float getCascadeInches() {
     return (cascade_sensor.get_position() / 100.0f) * INCHES_PER_DEGREE;
 }
-void moveCascadeTo(double targetInches, int timeoutMs) {
-    cascade_pid.reset();
-    uint32_t start = pros::millis();
-    
-    while (true) {
-        float current_pos_inches = getCascadeInches();
-        float error = targetInches - current_pos_inches;
-        float output = cascade_pid.update(error);
-
-        // Below 0: the PID output is tiny this close to 0, so boost it to make sure it comes back up.
-        constexpr float BELOW_ZERO_BOOST = 40.0f; // min upward power while below 0 - raise if it still sags
-        if (current_pos_inches < 0) output = std::max(output, BELOW_ZERO_BOOST);
-
-        output = std::clamp(output, -127.0f, 127.0f);
-        cascade.move(output);
-
-        // stop when at target (and not below 0) or the timer runs out
-        bool atTarget = std::abs(error) < .3 && current_pos_inches >= 0;
-        if (atTarget || pros::millis() - start > (uint32_t)timeoutMs) {
-            cascade.set_brake_mode(pros::MotorBrake::hold);
-            cascade.move_velocity(0);
-            break;
-        }
-        pros::delay(10);
-    }
-}
+// moveCascadeTo() is in autons.cpp, under "Helper functions for robot mechanics"
 pros::Motor toggleMotor(-8,pros::v5::MotorGears::green);
 pros::Optical toggleSensor(2);
 bool clawBool = false;

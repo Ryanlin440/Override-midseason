@@ -9,8 +9,64 @@
 
 
 // ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
+
+// Stack Heights
+// Alliance
+int justPinAlliance = 2;
+int stack1Alliance = 4;
+int stack2Alliance = 4;
+int stack3Alliance = 4;
+int stack4Alliance = 4;
+int stack5Alliance = 4;
+
+// Neutral
+int justPinNeutral = 2;
+int stack1Neutral = 4;
+int stack2Neutral = 4;
+int stack3Neutral = 4;
+int stack4Neutral = 4;
+int stack5Neutral = 4;
+
+// Middle
+int justPinMiddle = 2;
+int stack1Middle = 4;
+int stack2Middle = 4;
+int stack3Middle = 4;
+
+int waitTimeClearingMatchloader = 200;
+
+// ---------------------------------------------------------------------------
 // Helper functions for robot mechanics
 // ---------------------------------------------------------------------------
+
+void moveCascadeTo(double targetInches, int timeoutMs) {
+    cascade_pid.reset();
+    uint32_t start = pros::millis();
+
+    while (true) {
+        float current_pos_inches = getCascadeInches();
+        float error = targetInches - current_pos_inches;
+        float output = cascade_pid.update(error);
+
+        // Below 0: the PID output is tiny this close to 0, so boost it to make sure it comes back up.
+        constexpr float BELOW_ZERO_BOOST = 40.0f; // min upward power while below 0 - raise if it still sags
+        if (current_pos_inches < 0) output = std::max(output, BELOW_ZERO_BOOST);
+
+        output = std::clamp(output, -127.0f, 127.0f);
+        cascade.move(output);
+
+        // stop when at target (and not below 0) or the timer runs out
+        bool atTarget = std::abs(error) < .3 && current_pos_inches >= 0;
+        if (atTarget || pros::millis() - start > (uint32_t)timeoutMs) {
+            cascade.set_brake_mode(pros::MotorBrake::hold);
+            cascade.move_velocity(0);
+            break;
+        }
+        pros::delay(10);
+    }
+}
 
 void openClaw(int lowerMs = 250) {
     uint32_t start = pros::millis();
@@ -23,9 +79,9 @@ void openClaw(int lowerMs = 250) {
     moveCascadeTo(0); // keep going down to 0
 };
 
-void closeClawSearching(int timeoutMs = 1000, double cascadeLift = GRAB_LIFT_IN, int liftDelayMs = 0) {
-     uint32_t start = pros::millis();
-     pros::Task armTask([=]() {
+void closeClawSearching(double cascadeLift = GRAB_LIFT_IN, int liftDelayMs = 0, int timeoutMs = 500) {
+    uint32_t start = pros::millis();
+    pros::Task armTask([=]() {
         // same prediction + grab as L1Button() in main.cpp
         constexpr int    GRAB_DIST_MM = 50; // minimum dist
         constexpr double CLAW_CLOSE_MS = 40; // how long it takes to actually close
@@ -66,6 +122,7 @@ void closeClawSearching(int timeoutMs = 1000, double cascadeLift = GRAB_LIFT_IN,
 void closeClawReg(){
     claw.set_value(false);
     clawBool = false;
+    moveCascadeTo(GRAB_LIFT_IN);
 }
 
 void toggleAuto(int timeoutMs = 1000) {
@@ -88,37 +145,41 @@ void movementNearSide(){
     distanceReset(90, false, true);
 
     //Toggling
-
-    //ask ryan
+    toggleAuto(1000);
+    moveCascadeTo(justPinAlliance, 500);
 
     // Scoring first pin
     chassis.turnToPoint(-56, 0, 500);
     chassis.moveToPoint(-56, 0, 500, {.minSpeed = 127});
 
-    chassis.moveToPoint(-47, -16, 500);
+    chassis.moveToPoint(-47, -16, 500, {}, false);
+    openClaw(100);
 
     // Getting out of way
     chassis.moveToPoint(-52, -8, 500, {.forwards = false, .minSpeed = 127});
 
-    // Getting first pin/cup stack & scoring
+    // Getting first pin/cup stack
     chassis.turnToPoint(-28, -21, 500);
     chassis.moveToPoint(-28, -21, 500);
+    closeClawSearching(stack1Alliance);
 
+    // Going back to goal
     chassis.turnToPoint(-41, -24, 500);
     chassis.moveToPoint(-41, -24, 500);
+    openClaw();
 
     // Getting second pin/cup stack & scoring
     chassis.moveToPoint(-31, -31, 500, {.forwards = false});
     chassis.turnToPoint(-43, -43, 500);
     chassis.moveToPoint(-43, -43, 500);
+    closeClawSearching(stack2Alliance);
 
     chassis.turnToPoint(-47, -30, 500);
     chassis.moveToPoint(-47, -30, 500);
-    
-
+    openClaw();
 }
 
-void resettingForSkillsFirstGoal(){
+void resettingForSkillsFirstGoal(int height){
     // Resetting
     chassis.moveToPoint(-47, -59, 1000, {.forwards = false});
     chassis.turnToPoint(-65, -59, 500);
@@ -126,18 +187,22 @@ void resettingForSkillsFirstGoal(){
 
     // Grabbing from matchloader
     chassis.turnToPoint(-65, -59, 500);
-    chassis.moveToPoint(-65, -59, 500);
+    chassis.moveToPoint(-65, -59, 500, {}, false);
+    closeClawReg();
 
     // Resetting #2
     chassis.moveToPoint(-47, -59, 1000, {.forwards = false});
+    pros::delay(200);
+    moveCascadeTo(height, 1000);
 }
 
-void skillsFirstGoal(int cascadeHeight){
-    resettingForSkillsFirstGoal();
+void skillsFirstGoal(){
+    resettingForSkillsFirstGoal(stack3Alliance);
 
     // Scoring
     chassis.turnToPoint(-47, -30, 500);
-    chassis.moveToPoint(-47, -30, 500);
+    chassis.moveToPoint(-47, -30, 500, {}, false);
+    openClaw();
 }
 
 void spinMoveToGoal(){
@@ -147,7 +212,8 @@ void spinMoveToGoal(){
 
     // Spin moveeeee part 2
     chassis.turnToPoint(-30, -47, 500);
-    chassis.moveToPoint(-30, -47, 500);
+    chassis.moveToPoint(-30, -47, 500, {}, false);
+    openClaw();
 }
 
 void spinMoveReverse(){
@@ -163,14 +229,15 @@ void spinMoveReverse(){
 
     // Move to Matchloader
     chassis.turnToPoint(-65, -59, 500);
-    chassis.moveToPoint(-65, -59, 500);
+    chassis.moveToPoint(-65, -59, 500, {}, false);
+    closeClawReg();
 
 }
 
-void scoreMiddle(int cascadeHeight){
-    // Score in middle
+void scoreMiddle(){
     chassis.turnToPoint(0, 0, 500);
-    chassis.moveToPoint(0, 0, 500);
+    chassis.moveToPoint(0, 0, 500, {}, false);
+    openClaw();
 }
 
 // ---------------------------------------------------------------------------
@@ -270,10 +337,10 @@ void FarSideAutonAWP() {
 void SkillsAuton() {
     movementNearSide();
     // Loop #1 on near side Alliance goal, stack #1
-    skillsFirstGoal(10);
+    skillsFirstGoal();
 
     // This grabs from matchloader only the pin, ends at the middle point, stack #2
-    resettingForSkillsFirstGoal();
+    resettingForSkillsFirstGoal(justPinAlliance);
 
     // Loop #1 on far side Alliance goal, stack #3
         //Spin move, ends at the goal
@@ -281,6 +348,8 @@ void SkillsAuton() {
 
         //Spin move reverse, ends at the matchloader
         spinMoveReverse();
+        pros::delay(waitTimeClearingMatchloader);
+        moveCascadeTo(stack1Alliance, 500);
 
         // Goes to reset point.
         chassis.moveToPoint(-47, -59, 500, {.forwards = false});
@@ -291,6 +360,8 @@ void SkillsAuton() {
 
         //Spin move reverse, ends at the matchloader
         spinMoveReverse();
+        pros::delay(waitTimeClearingMatchloader);
+        moveCascadeTo(stack2Alliance, 500);
 
         // Goes to reset point.
         chassis.moveToPoint(-47, -59, 500, {.forwards = false});
@@ -301,16 +372,32 @@ void SkillsAuton() {
 
         //Spin move reverse, ends at the matchloader
         spinMoveReverse();
+        pros::delay(waitTimeClearingMatchloader);
+        moveCascadeTo(stack3Alliance, 1000);
 
         // Goes to reset point.
         chassis.moveToPoint(-47, -59, 500, {.forwards = false});
 
-    // Loop #4 on far side Alliance goal, stack #6 & last pin.
+    // Loop #4 on far side Alliance goal, stack #6.
         //Spin move, ends at the goal
         spinMoveToGoal();
 
         //Spin move reverse, ends at the matchloader
         spinMoveReverse();
+        pros::delay(waitTimeClearingMatchloader);
+        moveCascadeTo(stack4Alliance, 1000);
+
+        // Goes to reset point.
+        chassis.moveToPoint(-47, -59, 500, {.forwards = false});
+
+    // Loop #5 on far side Alliance goal, last pin.
+        //Spin move, ends at the goal
+        spinMoveToGoal();
+
+        //Spin move reverse, ends at the matchloader
+        spinMoveReverse();
+        pros::delay(waitTimeClearingMatchloader);
+        moveCascadeTo(justPinMiddle, 500);
 
         // Goes to reset point.
         chassis.moveToPoint(-47, -59, 500, {.forwards = false});
@@ -321,25 +408,28 @@ void SkillsAuton() {
 
     // Touch the wall
     chassis.turnToPoint(0, -65, 500, {.forwards = false});
-    chassis.moveToPoint(0, -65, 1000, {.forwards = false});
+    chassis.moveToPoint(0, -65, 500, {.forwards = false}, false);
+    toggleAuto();
 
     // Go middle
     chassis.turnToPoint(10, -10, 500);
     chassis.moveToPoint(10, -10, 1000, {.minSpeed = 127});
 
-    scoreMiddle(5);
+    scoreMiddle();
 
     // Grab first stack
     chassis.turnToPoint(22, 22, 500);
     chassis.moveToPoint(22, 22, 500);
+    closeClawSearching(stack1Middle);
 
-    scoreMiddle(7);
+    scoreMiddle();
 
     // Grab second stack
     chassis.turnToPoint(46, 46, 500);
     chassis.moveToPoint(46, 46, 500);
+    closeClawSearching(stack2Middle);
 
-    scoreMiddle(9);
+    scoreMiddle();
 
 }
 
