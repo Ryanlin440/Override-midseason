@@ -8,7 +8,9 @@
 #include <cmath>
 
 
-
+// ---------------------------------------------------------------------------
+// Helper functions for robot mechanics
+// ---------------------------------------------------------------------------
 
 void openClaw(int lowerMs = 250) {
     uint32_t start = pros::millis();
@@ -77,7 +79,7 @@ void toggleAuto(int timeoutMs = 1000) {
 }
 
 // ---------------------------------------------------------------------------
-// Autonomous routines
+// Skills Helper Functions | Repetitive motion
 // ---------------------------------------------------------------------------
 
 void movementNearSide(){
@@ -115,7 +117,66 @@ void movementNearSide(){
     
 
 }
-//near side
+
+void resettingForSkillsFirstGoal(){
+    // Resetting
+    chassis.moveToPoint(-47, -59, 1000, {.forwards = false});
+    chassis.turnToPoint(-65, -59, 500);
+    chassis.moveToPoint(-65, -59, 500);
+
+    // Grabbing from matchloader
+    chassis.turnToPoint(-65, -59, 500);
+    chassis.moveToPoint(-65, -59, 500);
+
+    // Resetting #2
+    chassis.moveToPoint(-47, -59, 1000, {.forwards = false});
+}
+
+void skillsFirstGoal(int cascadeHeight){
+    resettingForSkillsFirstGoal();
+
+    // Scoring
+    chassis.turnToPoint(-47, -30, 500);
+    chassis.moveToPoint(-47, -30, 500);
+}
+
+void spinMoveToGoal(){
+    // Spin moveeeee
+    chassis.turnToPoint(-38, -47, 500, {.forwards = false, .minSpeed = 127});
+    chassis.moveToPoint(-38, -47, 500, {.forwards = false});
+
+    // Spin moveeeee part 2
+    chassis.turnToPoint(-30, -47, 500);
+    chassis.moveToPoint(-30, -47, 500);
+}
+
+void spinMoveReverse(){
+    // Get into position
+    chassis.moveToPoint(-38, -47, 500, {.forwards = false});
+
+    // Spin moveeeee
+    chassis.turnToPoint(-47, -59, 500, {.forwards = false, .minSpeed = 127});
+    chassis.moveToPoint(-47, -59, 500, {.forwards = false});
+    // Spin moveeeee part 2
+    chassis.turnToPoint(-38, -47, 500);
+    chassis.moveToPoint(-38, -47, 500);
+
+    // Move to Matchloader
+    chassis.turnToPoint(-65, -59, 500);
+    chassis.moveToPoint(-65, -59, 500);
+
+}
+
+void scoreMiddle(int cascadeHeight){
+    // Score in middle
+    chassis.turnToPoint(0, 0, 500);
+    chassis.moveToPoint(0, 0, 500);
+}
+
+// ---------------------------------------------------------------------------
+// Autonomous routines
+// ---------------------------------------------------------------------------
+
 void NearSideAutonOneStack() {
     // Getting third pin/cup stack from wall & scoring
     chassis.moveToPoint(-47, -38, 500, {.forwards = false});
@@ -128,7 +189,7 @@ void NearSideAutonOneStack() {
     chassis.moveToPoint(-54, -24, 500);
 
 }
-//far side
+
 void FarSideAutonAWP() {
     //Setting up inital Pos
     chassis.setPose(0, -63, 0);
@@ -206,63 +267,6 @@ void FarSideAutonAWP() {
     pros::delay(10);
 }
 
-// -----------Helpers for Skills ---------------
-void resettingForSkillsFirstGoal(){
-    // Resetting
-    chassis.moveToPoint(-47, -59, 1000, {.forwards = false});
-    chassis.turnToPoint(-65, -59, 500);
-    chassis.moveToPoint(-65, -59, 500);
-
-    // Grabbing from matchloader
-    chassis.turnToPoint(-65, -59, 500);
-    chassis.moveToPoint(-65, -59, 500);
-
-    // Resetting #2
-    chassis.moveToPoint(-47, -59, 1000, {.forwards = false});
-}
-
-void skillsFirstGoal(int cascadeHeight){
-    resettingForSkillsFirstGoal();
-
-    // Scoring
-    chassis.turnToPoint(-47, -30, 500);
-    chassis.moveToPoint(-47, -30, 500);
-}
-
-void spinMoveToGoal(){
-    // Spin moveeeee
-    chassis.turnToPoint(-38, -47, 500, {.forwards = false, .minSpeed = 127});
-    chassis.moveToPoint(-38, -47, 500, {.forwards = false});
-
-    // Spin moveeeee part 2
-    chassis.turnToPoint(-30, -47, 500);
-    chassis.moveToPoint(-30, -47, 500);
-}
-
-void spinMoveReverse(){
-    // Get into position
-    chassis.moveToPoint(-38, -47, 500, {.forwards = false});
-
-    // Spin moveeeee
-    chassis.turnToPoint(-47, -59, 500, {.forwards = false, .minSpeed = 127});
-    chassis.moveToPoint(-47, -59, 500, {.forwards = false});
-    // Spin moveeeee part 2
-    chassis.turnToPoint(-38, -47, 500);
-    chassis.moveToPoint(-38, -47, 500);
-
-    // Move to Matchloader
-    chassis.turnToPoint(-65, -59, 500);
-    chassis.moveToPoint(-65, -59, 500);
-
-}
-
-void scoreMiddle(int cascadeHeight){
-    // Score in middle
-    chassis.turnToPoint(0, 0, 500);
-    chassis.moveToPoint(0, 0, 500);
-}
-// -----------Helpers for Skills ---------------
-
 void SkillsAuton() {
     movementNearSide();
     // Loop #1 on near side Alliance goal, stack #1
@@ -338,8 +342,9 @@ void SkillsAuton() {
     scoreMiddle(9);
 
 }
+
 // ---------------------------------------------------------------------------
-// Test / tuning routines
+// Test / tuning 
 // ---------------------------------------------------------------------------
 
 void darwin_test() {
@@ -410,13 +415,7 @@ void tuningPID(){
 
 }
 
-// IMU scale test. Blocks opcontrol until B is pressed: only right-stick
-// turning works while it runs. Line the robot up against a wall/tile edge,
-// press A to zero, spin in place with the right stick (or by hand), and line
-// it back up after some whole number of turns. The screen task in main.cpp
-// shows the rotation and the scale factor (true degrees / IMU degrees).
-// This never prints to the brain screen itself: LVGL isn't thread-safe, and
-// printing from here and the screen task at once crashes the brain.
+// IMU scale test
 bool spinTestActive = false;
 double spinTestRotation = 0;
 double spinTestPeakRate = 0; // fastest turn rate seen since the last zero, deg/s
