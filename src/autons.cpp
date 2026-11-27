@@ -250,11 +250,17 @@ void NearSideAutonOneStack() {
     chassis.turnToPoint(-58, -29, 500);
     chassis.moveToPoint(-58, -29, 500);
 
-    chassis.moveToPoint(-68, -23, 500);
+    chassis.turnToPoint(-68, -23, 500);
+    chassis.moveToPoint(-68, -23, 500, {}, false);
+    closeClawReg();
+    moveCascadeTo(stack3Alliance, 1000);
 
-    chassis.turnToPoint(-54, -24, 500);
-    chassis.moveToPoint(-54, -24, 500);
+    chassis.turnToPoint(-47, -38, 500, {.forwards = false});
+    chassis.moveToPoint(-47, -38, 500, {.forwards = false});
 
+    chassis.turnToPoint(-47, -37, 500);
+    chassis.moveToPoint(-47, -37, 500, {}, false);
+    openClaw(250);
 }
 
 void FarSideAutonAWP() {
