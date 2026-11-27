@@ -382,7 +382,7 @@ void opcontrol() {
     // the field kills autonomous() at 15 s, so it never gets to clear this itself
     autonRunning = false;
     poseFusionEnabled = false;
-    // offsetTuner();
+    // offsetTuner(0, 48, 90); // robot center at (x, y) facing heading, square to the walls
     // sensorNoiseTest();
     ukfEnabled = false; // UKF keeps running in driver control
 
@@ -630,6 +630,7 @@ void startAutoToggle() {
                         if (seesOurs) {
                             toggleMotor.move_velocity(0); // already right, hold
                         } else {
+                            pros::delay(200);
                             state = State::Search;
                             stateStart = now;
                         }

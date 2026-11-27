@@ -1,20 +1,22 @@
 // Distance sensor offset tuner. Put the robot's center (the tracking center LemLib uses, not
-// necessarily the middle of the frame) exactly on x = 0 or y = 0, square to the walls. For the
-// selected sensor it works out what offset would make the reading put the robot exactly on that line.
+// necessarily the middle of the frame) exactly at the pose you pass in, square to the walls. For the
+// selected sensor it works out what offset would make the reading put the robot exactly there.
 //
-// Run it by calling offsetTuner() from opcontrol() (like spinTest()). Controller:
+// Run it by calling offsetTuner(x, y, heading) from opcontrol() (like spinTest()), e.g.
+// offsetTuner(0, 48, 90) with the robot on the y = 48 tile line facing the right wall. Pick a pose
+// that puts each sensor you want to tune close to its wall (under ~30 in): the readings are much
+// more accurate there. Controller:
 //   A   next sensor
-//   Y   heading used for the math: IMU -> fixed 0 -> 90 -> 180 -> 270 -> IMU
 //   B   exit; prints the table with the new offsets to the terminal
 //
-// A sensor pointing at the left/right wall assumes x = 0; one pointing at the top/bottom wall
-// assumes y = 0. With the robot square, only the offset along the beam changes the answer
-// (forward for front/back sensors, right for side sensors), so that's the one it calculates.
+// With the robot square, only the offset along the beam changes the answer (forward for front/back
+// sensors, right for side sensors), so that's the one it calculates. Which wall each beam hits is
+// worked out from the pose and the configured offsets, the same way distance_reset.cpp does it.
 //
-// The math is the same as distance_reset.cpp, run backwards: sensor position + reading * beam
-// direction = wall, solved for the offset instead of the robot's center. Starting values come from
-// include/localization/robot_config.hpp. Copy the results into littleX() there; the UKF,
-// distanceReset() and this tuner all read it.
+// The math is the same as distance_reset.cpp, run backwards: robot position + sensor offset +
+// reading * beam direction = wall, solved for the offset instead of the robot's center. Starting
+// values come from include/localization/robot_config.hpp. Copy the results into littleX() there;
+// the UKF, distanceReset() and this tuner all read it.
 
 #include <cmath>
 #include <cstdio>
@@ -28,34 +30,48 @@ namespace {
 
 constexpr int kAverageLoops = 50; // ~1 s of readings (the sensor refreshes every ~33 ms)
 constexpr double DEG_TO_RAD = M_PI / 180.0;
-// Heading choices for Y. -1 = use the IMU (chassis heading).
-constexpr double kHeadings[] = {-1, 0, 90, 180, 270};
-constexpr int kHeadingCount = sizeof(kHeadings) / sizeof(kHeadings[0]);
+constexpr double kMaxIncidenceDeg = 35.0; // same as MAX_INCIDENCE_DEG in distance_reset.cpp
 
 struct Solution {
     bool valid = false;
     bool isForward = false; // which offset was calculated
-    bool assumesX = false;  // true: robot on x = 0, false: on y = 0
+    bool hitsXWall = false; // true: left/right wall, false: top/bottom wall
     double offset = 0;
+    double expected = 0;    // reading the configured offsets predict, inches
+    double incidence = 0;   // beam angle off square to the wall, degrees
 };
 
-// The offset that puts the robot's center exactly on the line, for reading d (inches) at heading
+// The offset that puts the robot's center exactly at (x, y) for reading d (inches) at heading
 // headingDeg. Robot frame: +right, +forward; heading clockwise from +Y (LemLib).
-//   left/right wall:  x = wall - d*dirX - (right*cos t + forward*sin t)    = 0
-//   top/bottom wall:  y = wall - d*dirY - (-right*sin t + forward*cos t)   = 0
+//   left/right wall:  wall = x + (right*cos t + forward*sin t)   + d*dirX
+//   top/bottom wall:  wall = y + (-right*sin t + forward*cos t)  + d*dirY
 // Solved for whichever offset the heading makes count (the other one stays as configured).
-Solution solveOffset(const loc::DistanceSensorConfig& s, double d, double headingDeg, double fieldHalf) {
+Solution solveOffset(const loc::DistanceSensorConfig& s, double d, double x, double y, double headingDeg,
+                     double fieldHalf) {
     Solution out;
     double t = headingDeg * DEG_TO_RAD;
     double c = std::cos(t), sn = std::sin(t);
     double a = t + s.angleDeg * DEG_TO_RAD;
     double dirX = std::sin(a), dirY = std::cos(a);
-    out.assumesX = std::fabs(dirX) > std::fabs(dirY); // the wall the beam points at most directly
-    double rhs = out.assumesX ? (dirX > 0 ? fieldHalf : -fieldHalf) - d * dirX
-                              : (dirY > 0 ? fieldHalf : -fieldHalf) - d * dirY;
+
+    // Which wall the beam hits, from the pose and the configured offsets.
+    double sx = x + s.right * c + s.forward * sn;
+    double sy = y - s.right * sn + s.forward * c;
+    double tX = INFINITY, tY = INFINITY;
+    if (dirX > 1e-9) tX = (fieldHalf - sx) / dirX;
+    else if (dirX < -1e-9) tX = (-fieldHalf - sx) / dirX;
+    if (dirY > 1e-9) tY = (fieldHalf - sy) / dirY;
+    else if (dirY < -1e-9) tY = (-fieldHalf - sy) / dirY;
+    out.hitsXWall = tX < tY;
+    out.expected = out.hitsXWall ? tX : tY;
+    out.incidence = std::acos(std::fmin(1.0, std::fabs(out.hitsXWall ? dirX : dirY))) / DEG_TO_RAD;
+    if (!(out.expected > 0)) return out; // pose puts the sensor past the wall
+
+    double rhs = out.hitsXWall ? (dirX > 0 ? fieldHalf : -fieldHalf) - d * dirX - x
+                               : (dirY > 0 ? fieldHalf : -fieldHalf) - d * dirY - y;
     // rhs = (x wall)  right*c + forward*sn      (y wall)  -right*sn + forward*c
-    double rightCoef = out.assumesX ? c : -sn;
-    double forwardCoef = out.assumesX ? sn : c;
+    double rightCoef = out.hitsXWall ? c : -sn;
+    double forwardCoef = out.hitsXWall ? sn : c;
     if (std::fabs(forwardCoef) >= std::fabs(rightCoef)) {
         out.isForward = true;
         out.offset = (rhs - s.right * rightCoef) / forwardCoef;
@@ -69,14 +85,16 @@ Solution solveOffset(const loc::DistanceSensorConfig& s, double d, double headin
 
 } // namespace
 
-void offsetTuner() {
+void offsetTuner(double x, double y, double headingDeg) {
     loc::RobotConfig cfg = loc::littleX();
     int count = (int)cfg.sensors.size();
     if (count == 0) return;
 
+    headingDeg = std::fmod(headingDeg, 360.0);
+    if (headingDeg < 0) headingDeg += 360.0;
+
     tuningToolActive = true; // pauses the controller pose line
     int sensor = 0;
-    int headingChoice = 0;
     Solution best[16]; // last solution per sensor, for the table at the end
 
     double history[kAverageLoops] = {};
@@ -92,16 +110,6 @@ void offsetTuner() {
         if (controller.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_A)) {
             sensor = (sensor + 1) % count;
             historyCount = historyNext = 0;
-        }
-        if (controller.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_Y)) {
-            headingChoice = (headingChoice + 1) % kHeadingCount;
-        }
-
-        double heading = kHeadings[headingChoice];
-        bool fixedHeading = heading >= 0;
-        if (!fixedHeading) {
-            heading = std::fmod(chassis.getPose().theta, 360.0);
-            if (heading < 0) heading += 360.0;
         }
 
         // Read and average the selected sensor.
@@ -121,9 +129,12 @@ void offsetTuner() {
         }
 
         Solution sol;
-        if (d >= 0) sol = solveOffset(s, d, heading, cfg.fieldHalf);
-        if (sol.valid && sensor < 16) best[sensor] = sol;
+        if (d >= 0) sol = solveOffset(s, d, x, y, headingDeg, cfg.fieldHalf);
+        bool steep = sol.incidence > kMaxIncidenceDeg;
+        if (sol.valid && !steep && sensor < 16) best[sensor] = sol;
         double current = sol.isForward ? s.forward : s.right;
+        // ! = past this sensor's maxRange, / = beam too far off square to trust
+        const char* warn = steep ? "/" : d > s.maxRange ? "!" : " ";
 
         // The controller drops prints sent less than ~50 ms apart, so update one line at a time.
         if (now - lastPrint >= 60) {
@@ -132,18 +143,18 @@ void offsetTuner() {
                 if (sol.valid) controller.print(0, 0, "%-5s %s %7.3f ", s.name, sol.isForward ? "fwd" : "rgt", sol.offset);
                 else controller.print(0, 0, "%-5s no reading  ", s.name);
             } else if (printLine == 1) {
-                controller.print(1, 0, "h%5.1f %s %s=0   ", heading, fixedHeading ? "FIX" : "imu",
-                                 sol.assumesX ? "x" : "y");
+                controller.print(1, 0, "%s wall exp%6.2f ", sol.hitsXWall ? "x" : "y", sol.expected);
             } else {
-                controller.print(2, 0, "d%6.2f was%6.2f%s", d, current, d > s.maxRange ? "!" : " ");
+                controller.print(2, 0, "d%6.2f was%6.2f%s", d, current, warn);
             }
             printLine = (printLine + 1) % 3;
         }
         if (sol.valid) {
             screenPrint(5, "TUNE %s: %s offset %.3f (was %.3f)", s.name, sol.isForward ? "forward" : "right",
                         sol.offset, current);
-            screenPrint(6, "assumes %s=0  heading %.1f %s  reading %.2f in%s", sol.assumesX ? "x" : "y", heading,
-                        fixedHeading ? "(fixed)" : "(IMU)", d, d > s.maxRange ? " PAST maxRange" : "");
+            screenPrint(6, "pose (%.1f, %.1f, %.0f) %s wall  read %.2f exp %.2f%s%s", x, y, headingDeg,
+                        sol.hitsXWall ? "x" : "y", d, sol.expected, d > s.maxRange ? " PAST maxRange" : "",
+                        steep ? " TOO ANGLED" : "");
         } else {
             screenPrint(5, "TUNE %s: no reading", s.name);
             screenPrint(6, "");
@@ -152,7 +163,8 @@ void offsetTuner() {
         pros::delay(20);
     }
 
-    std::printf("\n--- offsets: paste into littleX() in include/localization/robot_config.hpp ---\n");
+    std::printf("\n--- offsets from pose (%.2f, %.2f, %.1f): paste into littleX() in "
+                "include/localization/robot_config.hpp ---\n", x, y, headingDeg);
     for (int i = 0; i < count; i++) {
         loc::DistanceSensorConfig& s = cfg.sensors[i];
         bool tuned = i < 16 && best[i].valid;

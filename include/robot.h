@@ -173,8 +173,9 @@ void tuningPID();
 void spinTest();
 void testing();
 /// Distance sensor offset tuner (src/lib/offset_tuner.cpp). Blocks until B. Put the robot's center
-/// square on x = 0 or y = 0; it calculates the offset each sensor needs to read exactly that.
-void offsetTuner();
+/// exactly at (x, y) facing heading (degrees, 0 = +Y, clockwise), square to the walls; it calculates
+/// the offset each sensor needs to read exactly that. Pick a pose with the sensors close to walls.
+void offsetTuner(double x, double y, double heading);
 /// Distance sensor noise test (src/lib/sensor_noise_test.cpp). Blocks until B. Park the robot facing
 /// walls, press A to measure; shows each sensor's average and spread (sigma) for Tuning.
 void sensorNoiseTest();
