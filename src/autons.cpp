@@ -9,12 +9,16 @@
 
 
 
-// lowerMs: how long to drive the cascade toward 0 before opening
+
 void openClaw(int lowerMs = 250) {
-    moveCascadeTo(0, lowerMs); // lower from wherever it is, gives up after lowerMs
-    claw.set_value(true);
-    clawBool=true;
-    pros::delay(250);
+    uint32_t start = pros::millis();
+    while (pros::millis() - start < (uint32_t)lowerMs) {
+        cascade.move(getCascadeInches() > 0.011 ? cascadeDownSpeed() : 0); // go down, stop at the bottom
+        pros::delay(10);
+    }
+    claw.set_value(true); // open
+    clawBool = true;
+    moveCascadeTo(0); // keep going down to 0
 };
 
 void closeClawSearching(int timeoutMs = 1000, double cascadeLift = GRAB_LIFT_IN, int liftDelayMs = 0) {
@@ -62,8 +66,14 @@ void closeClawReg(){
     clawBool = false;
 }
 
-void toggleAuto(){
-    
+void toggleAuto(int timeoutMs = 1000) {
+    uint32_t start = pros::millis();
+    while (!toggleSeesOurs() && pros::millis() - start < (uint32_t)timeoutMs) {
+        if (chassis.isInMotion()) start = pros::millis(); // still driving in: the timeout starts once we arrive
+        toggleMotor.move_velocity(toggleSearchRpm());
+        pros::delay(10);
+    }
+    toggleMotor.move_velocity(0); // brake mode HOLD keeps it there
 }
 
 // ---------------------------------------------------------------------------

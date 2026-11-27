@@ -600,6 +600,15 @@ static int toggleMaxRpm() {
     }
 }
 
+// Used by toggleAuto() in autons.cpp so it sorts with the same colors and speed as the task below.
+constexpr int kObjectProx = 100; // proximity above this = something is in front of the sensor
+bool toggleSeesOurs() {
+    if (toggleSensor.get_proximity() <= kObjectProx) return false; // nothing in front of the sensor
+    double hue = toggleSensor.get_hue();
+    return isRed ? hueIsRed(hue) : hueIsBlue(hue);
+}
+int toggleSearchRpm() { return (int)(toggleMaxRpm() * kSearchSpeedFrac); }
+
 void startAutoToggle() {
     pros::Task toggleTask([]() {
         enum class State { Idle, Search, Done };
@@ -624,7 +633,7 @@ void startAutoToggle() {
                 continue;
             }
 
-            bool objectPresent = toggleSensor.get_proximity() > 100; // check this value
+            bool objectPresent = toggleSensor.get_proximity() > kObjectProx; // check this value
             double hue = toggleSensor.get_hue();
             bool seesRed = hueIsRed(hue), seesBlue = hueIsBlue(hue);
             bool seesOurs = isRed ? seesRed : seesBlue;

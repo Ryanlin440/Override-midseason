@@ -114,6 +114,8 @@ constexpr float CASCADE_TRAVEL_SCALE = 2.355f;//adjst this for new one
 constexpr float INCHES_PER_DEGREE = (HS_AXLE_DIAMETER * 3.14159f) / 360.0f * CASCADE_TRAVEL_SCALE;
 
 float getCascadeInches();
+/// Power for driving the cascade down (main.cpp). Used by L1Button() and openClaw().
+float cascadeDownSpeed();
 
 extern pros::adi::DigitalOut claw;
 extern bool clawBool;
@@ -130,6 +132,10 @@ extern pros::Optical toggleSensor;
 void startAutoToggle();
 /// Set false before driving toggleMotor yourself (driver button, auton), true to hand it back.
 extern bool autoToggleEnabled;
+/// True when something is in front of toggleSensor and it is showing our alliance color (isRed).
+bool toggleSeesOurs();
+/// Speed (rpm) the toggle spins at while looking for our color.
+int toggleSearchRpm();
 /// Degrees the toggle coasted after seeing our color (overshoot) - debug readout.
 extern double toggleLastTravel;
 
@@ -245,7 +251,7 @@ void closeClaw(int timeoutMs, double cascadeLift, int liftDelayMs);
 void openClaw(int lowerMs);
 
 
-void NearSideAuton();
+void NearSideAutonOneStack();
 void SkillsAuton();
-void FarSideAuton();
+void FarSideAutonAWP();
 

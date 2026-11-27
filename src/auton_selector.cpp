@@ -25,8 +25,8 @@ struct AutonRoute {
 
 AutonRoute autons[] = {
     {"Driver", nullptr, 0, 0, 0},
-    {"NearSide Auton", NearSideAuton, 61.5, 0, 90},
-    {"FarSide Auton", FarSideAuton, 0, 61.5, 0},
+    {"NearSide Auton", NearSideAutonOneStack, 61.5, 0, 90},
+    {"FarSide Auton", FarSideAutonAWP, 0, 61.5, 0},
     {"Skills Auton", SkillsAuton, 61.5, 0, 90},
     {"Testing", testing, 0, 0, 0},
 };
