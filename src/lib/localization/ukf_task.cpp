@@ -97,7 +97,7 @@ void startUkf() {
                 double dRot = in.imuRotationDeg - prev.imuRotationDeg;
                 if (std::isfinite(dV) && std::isfinite(dH) && std::isfinite(dRot)) {
                     double t = loc::degToRad(written.theta);
-                    double right = cfg.odom.horizontalPositiveIsRight ? dH : -dH;
+                    double right = dH; // horizontal wheel counts up moving right
                     // LemLib heading: 0 = +Y, clockwise. Forward is (sin t, cos t), right is (cos t, -sin t).
                     expectX += dV * std::sin(t) + right * std::cos(t);
                     expectY += dV * std::cos(t) - right * std::sin(t);

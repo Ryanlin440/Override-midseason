@@ -30,7 +30,7 @@ lemlib::Drivetrain drivetrain(&left_motors, // left motor group
 );
 
 // pros::Distance backSensor(20);
-pros::Distance frontSensor(15);
+pros::Distance frontSensor(6);
 pros::Distance leftSensor(7);
 pros::Distance rightSensor(1);
 
@@ -46,8 +46,8 @@ pros::Distance* distanceSensorFor(const char* name) {
 ScaledImu imu(4, 1.00375, 1.00436); // left, right scales from spinTest(); 90% Half speed 10% Full speed
 pros::Rotation vertical_rotation_sensor(-10);
 pros::Rotation horizontal_rotation_sensor(-9);
-lemlib::TrackingWheel vertical_tracking_wheel(&vertical_rotation_sensor, lemlib::Omniwheel::NEW_2, -2.55);
-lemlib::TrackingWheel horizontal_tracking_wheel(&horizontal_rotation_sensor, lemlib::Omniwheel::NEW_2, -4.5);
+lemlib::TrackingWheel vertical_tracking_wheel(&vertical_rotation_sensor, lemlib::Omniwheel::NEW_2, -1.55);
+lemlib::TrackingWheel horizontal_tracking_wheel(&horizontal_rotation_sensor, lemlib::Omniwheel::NEW_2, -6.75);
 
 pros::MotorGroup cascade ({-16, 15}, pros::v5::MotorGears::blue);//2 11w
 pros::Rotation cascade_sensor(-3);
@@ -382,7 +382,9 @@ void opcontrol() {
     // the field kills autonomous() at 15 s, so it never gets to clear this itself
     autonRunning = false;
     poseFusionEnabled = false;
-    // ukfEnabled = true; // UKF keeps running in driver control
+    // offsetTuner();
+    // sensorNoiseTest();
+    ukfEnabled = false; // UKF keeps running in driver control
 
     // tuneCascadePID(5,80); // blocks ~15 s and L1 does nothing until it's done - only enable to tune
     // tuneAngularPID(90,127);
@@ -391,7 +393,6 @@ void opcontrol() {
     /*
     // loop forever
     // autonomous();
-
     // rotationChassisPID();
     // linearChassisPID();
     
@@ -437,6 +438,9 @@ void opcontrol() {
         if(controller.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_RIGHT)){
             toucherLeftBool = !toucherLeftBool;
             toucherLeft.set_value(toucherLeftBool);
+        }
+        if(controller.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_LEFT)){
+            distanceReset(90);
         }
         manualToggle();
         double cascadePos = getCascadeInches();

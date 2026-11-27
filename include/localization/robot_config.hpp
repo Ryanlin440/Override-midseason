@@ -33,17 +33,15 @@ struct OdomConfig {
     // reads them straight from LemLib, so main.cpp is where to change them.
     double verticalWheelRight = 0;     // vertical (forward-rolling) wheel, inches right of center
     double horizontalWheelForward = 0; // horizontal (sideways-rolling) wheel, inches forward of center
-    // Direction the horizontal wheel's distance counts up. Check on the robot: push it straight
-    // right by hand and watch horizontal_tracking_wheel.getDistanceTraveled(). If it goes down,
-    // set this to false.
-    bool horizontalPositiveIsRight = true;
+    // Both wheels must count the right way: vertical up when pushed forward, horizontal up when
+    // pushed right. If one counts backwards, flip the sign of its rotation sensor port in main.cpp.
 };
 
 struct RobotConfig {
     double fieldHalf = 140.5 / 2; // inner wall to wall, divided by 2
     // Outside size of the robot. Only used to keep the estimate from going into a wall.
-    double robotWidth = 14;
-    double robotLength = 14;
+    double robotWidth = 11.5;
+    double robotLength = 15.25;
 
     std::vector<DistanceSensorConfig> sensors;
     OdomConfig odom;
@@ -96,19 +94,18 @@ struct Tuning {
 inline RobotConfig littleX() {
     RobotConfig c;
     c.fieldHalf = 140.5 / 2;
-    c.robotWidth = 14;  // TODO measure the rebuilt robot
-    c.robotLength = 14;
+    c.robotWidth = 11.5;  // TODO measure the rebuilt robot
+    c.robotLength = 15.25;
 
     //            name     right   forward  angle  maxRange
     c.sensors = {
-        {"front",  4.0,    1.6,     0},
-        {"right",  5.25,   0.268,   90,    50}, // past 50 in this one reads really badly
-        {"left",  -3.95,   0.268,   270},
+        {"front",  -3.75,    .4+1.25,     0},
+        {"right",  3.55,   -.5,   90,    50}, // past 50 in this one reads really badly
+        {"left",  -3.15-.46,   -.5,   270,   50}, // reads badly far away too (conf ~10 at 75 in)
     };
 
     c.odom.verticalWheelRight = -0.55;   // vertical_tracking_wheel in main.cpp
     c.odom.horizontalWheelForward = -1.5; // horizontal_tracking_wheel in main.cpp
-    c.odom.horizontalPositiveIsRight = true;
 
     c.loopMs = 10;
     return c;

@@ -78,7 +78,7 @@ void Localizer::step(const RawInputs& in) {
     double dTheta = -degToRad(dRot); // IMU is clockwise degrees, filter is counterclockwise radians
     double vRight = robot_.odom.verticalWheelRight;
     double hForward = robot_.odom.horizontalWheelForward;
-    double hLeft = robot_.odom.horizontalPositiveIsRight ? -dH : dH;
+    double hLeft = -dH; // horizontal wheel counts up moving right
 
     // A wheel off the center of rotation gets swept along when the robot turns:
     //   vertical wheel reads   forward + verticalWheelRight * dTheta
