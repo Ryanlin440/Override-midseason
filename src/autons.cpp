@@ -263,14 +263,15 @@ void FarSideAutonAWP() {
     distanceReset(0, true, false);
 
     //Toggling
-
-    //ask ryan
+    toggleAuto();
+    moveCascadeTo(justPinAlliance, 500);
 
     // Scoring first pin
     chassis.turnToPoint(0, -56, 500);
     chassis.moveToPoint(0, -56, 500, {.minSpeed = 127});
 
-    chassis.moveToPoint(-16, -47, 500);
+    chassis.moveToPoint(-16, -47, 500, {}, false);
+    openClaw(100);
 
     // Getting out of way
     chassis.moveToPoint(-8, -47, 500, {.forwards = false, .minSpeed = 127});
@@ -281,17 +282,20 @@ void FarSideAutonAWP() {
 
     // Getting wall stack
     chassis.turnToPoint(-24, -65, 500);
-    chassis.moveToPoint(-24, -65, 500);
+    chassis.moveToPoint(-24, -65, 500, {}, false);
+    closeClawReg();
 
     // Clearing
     chassis.turnToPoint(0, -47, 500, {.forwards = false});
     chassis.moveToPoint(0, -47, 500, {.forwards = false});
+    moveCascadeTo(stack1Neutral, 500);
 
     // Going to goal & scoring
     chassis.turnToPoint(16, -47, 500);
-    chassis.moveToPoint(16, -47, 500);
+    chassis.moveToPoint(16, -47, 500, {}, false);
+    openClaw(250);
 
-    // The reverse
+    // ---------- The reverse-----------
 
     // Getting out of way
     chassis.moveToPoint(8, -47, 500, {.forwards = false, .minSpeed = 127});
@@ -302,15 +306,18 @@ void FarSideAutonAWP() {
 
     // Getting wall stack
     chassis.turnToPoint(24, -65, 500);
-    chassis.moveToPoint(24, -65, 500);
+    chassis.moveToPoint(24, -65, 500, {}, false);
+    closeClawReg();
 
     // Clearing
     chassis.turnToPoint(0, -47, 500, {.forwards = false});
     chassis.moveToPoint(0, -47, 500, {.forwards = false});
+    moveCascadeTo(stack1Alliance, 500);
 
     // Going to goal & scoring
     chassis.turnToPoint(-16, -47, 500);
-    chassis.moveToPoint(-16, -47, 500);
+    chassis.moveToPoint(-16, -47, 500, {}, false);
+    openClaw(250);
 
     // Clearing for middle stack
     chassis.moveToPoint(-9, -47, 500, {.forwards = false});
@@ -318,16 +325,19 @@ void FarSideAutonAWP() {
     // Grabbing middle stack
     chassis.turnToPoint(-21, -27, 500);
     chassis.moveToPoint(-21, -27, 500);
+    closeClawSearching(stack1Neutral);
 
     // Going to last goal
     chassis.turnToPoint(-47, 16, 500);
-    chassis.moveToPoint(-47, 16, 500);
+    chassis.moveToPoint(-47, 16, 500, {}, false);
+    openClaw(250);
 
     // Toggling
     chassis.turnToPoint(-56, 8, 500, {.forwards = false});
     chassis.moveToPoint(-56, 8, 500, {.forwards = false, .minSpeed = 127});
 
     chassis.moveToPoint(-63, 0, 500, {.forwards = false, .minSpeed = 127});
+    toggleAuto(1000);
 
     // Moving away from toggle
     chassis.moveToPoint(-60, 0, 500, {.minSpeed = 127});
